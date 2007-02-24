@@ -1181,5 +1181,11 @@
 (require @-n)
 
 ;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Test expand/preserve-letrec
+
+(test '(letrec-syntaxes+values ([(x) 3]) () (#%datum . 4)) syntax-object->datum
+      (expand/preserve-letrec #'(letrec-syntax ([x 3]) 4))
+
+;; ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (report-errs)
