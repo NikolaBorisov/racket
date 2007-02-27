@@ -80,8 +80,8 @@
                      (cond
                        [(eof-object? rd) (iter rd cont)]
                        [eval-compile-time-part? 
-                        (iter (expand-top-level-with-compile-time-evals rd) cont)]
-                       [else (iter (expand rd) cont)]))])
+                        (iter (expand-top-level-with-compile-time-evals/preserve-letrec rd) cont)]
+                       [else (iter (expand/preserve-letrec rd) cont)]))])
               (res input 
                    expanding-iter
                    complete-program?)))))

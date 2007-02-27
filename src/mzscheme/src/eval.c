@@ -187,6 +187,7 @@ static Scheme_Object *current_compile(int argc, Scheme_Object *[]);
 static Scheme_Object *eval_stx(int argc, Scheme_Object *argv[]);
 static Scheme_Object *compile_stx(int argc, Scheme_Object *argv[]);
 static Scheme_Object *expand_stx(int argc, Scheme_Object **argv);
+static Scheme_Object *expand_stx_preserve_letrec(int argc, Scheme_Object **argv);
 static Scheme_Object *expand_stx_once(int argc, Scheme_Object **argv);
 static Scheme_Object *expand_stx_to_top_form(int argc, Scheme_Object **argv);
 static Scheme_Object *top_introduce_stx(int argc, Scheme_Object **argv);
@@ -381,12 +382,17 @@ scheme_init_eval (Scheme_Env *env)
 			     env);
   scheme_add_global_constant("expand/preserve-letrec", 
 			     scheme_make_prim_w_arity(expand_preserve_letrec, 
-						      "expand",
+						      "expand/preserve-letrec",
 						      1, 1), 
 			     env);
   scheme_add_global_constant("expand-syntax", 
 			     scheme_make_prim_w_arity(expand_stx, 
 						      "expand-syntax",
+						      1, 1), 
+			     env);
+  scheme_add_global_constant("expand-syntax/preserve-letrec", 
+			     scheme_make_prim_w_arity(expand_stx_preserve_letrec, 
+						      "expand-syntax/preserve-letrec",
 						      1, 1), 
 			     env);
   scheme_add_global_constant("local-expand", 
@@ -7669,6 +7675,18 @@ static Scheme_Object *expand_stx(int argc, Scheme_Object **argv)
   env = scheme_get_env(NULL);
 
   return _expand(argv[0], scheme_new_expand_env(env, NULL, SCHEME_TOPLEVEL_FRAME), -1, -1, 0, 1, 0, NULL);
+}
+
+static Scheme_Object *expand_stx_preserve_letrec(int argc, Scheme_Object **argv)
+{
+  Scheme_Env *env;
+
+  if (!SCHEME_STXP(argv[0]))
+    scheme_wrong_type("expand-syntax/preserve-letrec", "syntax", 0, argc, argv);
+
+  env = scheme_get_env(NULL);
+
+  return _expand(argv[0], scheme_new_expand_env(env, NULL, SCHEME_TOPLEVEL_FRAME), -2, -1, 0, 1, 0, NULL);
 }
 
 static Scheme_Object *stop_syntax(Scheme_Object *form, Scheme_Comp_Env *env, 

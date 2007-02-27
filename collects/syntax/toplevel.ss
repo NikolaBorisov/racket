@@ -5,7 +5,9 @@
   (provide eval-compile-time-part-of-top-level
 	   eval-compile-time-part-of-top-level/compile
            expand-top-level-with-compile-time-evals
+           expand-top-level-with-compile-time-evals/preserve-letrec
            expand-syntax-top-level-with-compile-time-evals
+           expand-syntax-top-level-with-compile-time-evals/preserve-letrec
            expand-syntax-top-level-with-compile-time-evals/flatten)
 
   ;; eval-compile-time-part-of-top-level/compile : syntax -> (listof compiled-expression)
@@ -18,6 +20,10 @@
               (flatten-out-begins stx)))
   
   (define (expand-top-level-with-compile-time-evals stx)
+    (expand-syntax-top-level-with-compile-time-evals 
+     (namespace-syntax-introduce stx)))
+
+  (define (expand-top-level-with-compile-time-evals/preserve-letrec stx)
     (expand-syntax-top-level-with-compile-time-evals 
      (namespace-syntax-introduce stx)))
 
@@ -48,6 +54,21 @@
            (compile-and-eval-compile-time-part e #f)
            e)])))
   
+  (define (expand-syntax-top-level-with-compile-time-evals/preserve-letrec stx)
+    (let ([e (expand-syntax-to-top-form stx)])
+      (syntax-case e (begin)
+        [(begin expr ...)
+         (with-syntax ([(expr ...) 
+                        ;;left-to-right part of this map is important:
+                        (map expand-syntax-top-level-with-compile-time-evals
+                             (syntax->list (syntax (expr ...))))]
+                       [(beg . _) e])
+           (datum->syntax-object e (syntax-e (syntax (beg expr ...))) e e))]
+        [else 
+         (let ([e (expand-syntax/preserve-letrec e)])
+           (compile-and-eval-compile-time-part e #f)
+           e)])))
+
   ;; compile-and-eval-compile-time-part : syntax boolean -> (union syntax compiled-expression)
   ;; compiles the syntax it receives as an argument and evaluates the compile-time part of it.
   ;; result depends on second argument. If #t, returns compiled expressions
