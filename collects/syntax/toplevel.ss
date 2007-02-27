@@ -24,7 +24,7 @@
      (namespace-syntax-introduce stx)))
 
   (define (expand-top-level-with-compile-time-evals/preserve-letrec stx)
-    (expand-syntax-top-level-with-compile-time-evals 
+    (expand-syntax-top-level-with-compile-time-evals/preserve-letrec
      (namespace-syntax-introduce stx)))
 
   ;; expand-syntax-top-level-with-compile-time-evals/flatten : syntax -> (listof syntax)
