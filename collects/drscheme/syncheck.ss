@@ -1343,7 +1343,7 @@ If the namespace does not, they are colored the unbound color.
               (collect-general-info sexp)
               (syntax-case* sexp (lambda case-lambda if begin begin0 let-values letrec-values set!
                                    quote quote-syntax with-continuation-mark 
-                                   #%app #%datum #%top #%plain-module-begin
+                                   #%app #%datum #%top #%plain-module-begin letrec-syntaxes+values
                                    define-values define-syntaxes define-values-for-syntax module
                                    require require-for-syntax provide)
                 (if high-level? module-transformer-identifier=? module-identifier=?)
@@ -1418,6 +1418,21 @@ If the namespace does not, they are colored the unbound color.
                      (for-each (λ (x) (add-binders x binders))
                                (syntax->list (syntax ((xss ...) ...))))
                      (for-each loop (syntax->list (syntax (es ...))))
+                     (for-each loop (syntax->list (syntax (bs ...))))))]
+                [(letrec-syntaxes+values (stx-bindings ...) (val-bindings ...) bs ...)
+                 (begin
+                   (annotate-raw-keyword sexp varrefs)
+                   (for-each collect-general-info (syntax->list (syntax (stx-bindings ...))))
+                   (for-each collect-general-info (syntax->list (syntax (val-bindings ...))))
+                   (annotate-tail-position/last sexp (syntax->list (syntax (bs ...))) tail-ht)
+                   (with-syntax ([(((sxss ...) ses) ...) (syntax (stx-bindings ...))]
+                                 [(((vxss ...) ves) ...) (syntax (val-bindings ...))])
+                     (for-each (λ (x) (add-binders x binders))
+                               (syntax->list (syntax ((sxss ...) ...))))
+                     (for-each (λ (x) (add-binders x binders))
+                               (syntax->list (syntax ((vxss ...) ...))))
+                     (for-each (lambda (s) (level-loop s #t)) (syntax->list (syntax (ses ...))))
+                     (for-each loop (syntax->list (syntax (ves ...))))
                      (for-each loop (syntax->list (syntax (bs ...))))))]
                 [(set! var e)
                  (begin
@@ -1519,7 +1534,7 @@ If the namespace does not, they are colored the unbound color.
                    (add-id varrefs sexp))]
                 [_
                  (begin
-                   #;
+                   
                    (printf "unknown stx: ~e (datum: ~e) (source: ~e)~n"
                            sexp
                            (and (syntax? sexp)
