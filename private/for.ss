@@ -49,6 +49,7 @@
              prop:sequence
              
              define-sequence-syntax
+             define-raw-sequence-syntax
              make-do-sequence
              :do-in)
   
@@ -65,8 +66,15 @@
                         3 0 #f
                         null (current-inspector)
                         0))
+    (define-values (struct:raw-sequence-transformer
+                    make-raw-sequence-transformer
+                    raw-sequence-transformer?
+                    raw-sequence-transformer-ref
+                    raw-sequence-transformer-set!)
+      (make-struct-type 'raw-sequence-transformer struct:sequence-transformer
+                        0 0))
 
-    (define (create-sequence-transformer proc1 proc2 cert)
+    (define (create-sequence-transformer proc1 proc2 cert raw?)
       (unless (and (procedure? proc1)
                    (or (procedure-arity-includes? proc1 1)
                        (procedure-arity-includes? proc1 0)))
@@ -80,17 +88,20 @@
                           "procedure (arity 1)"
                           1
                           proc1 proc2))
-      (make-sequence-transformer (if (procedure-arity-includes? proc1 0)
-                                      (lambda (stx)
-                                        (if (identifier? stx)
-                                            (proc1)
-                                            (datum->syntax stx
-                                                           #`(#,(proc1) . #,(cdr (syntax-e stx)))
-                                                           stx
-                                                           stx)))
-                                      proc1)
-                                  proc2
-                                  cert))
+      ((if raw?
+           make-raw-sequence-transformer
+           make-sequence-transformer)
+       (if (procedure-arity-includes? proc1 0)
+           (lambda (stx)
+             (if (identifier? stx)
+                 (proc1)
+                 (datum->syntax stx
+                                #`(#,(proc1) . #,(cdr (syntax-e stx)))
+                                stx
+                                stx)))
+           proc1)
+       proc2
+       cert))
 
     (define cert-key (gensym 'for-cert))
     
@@ -141,6 +152,22 @@
     (define (expand-clause orig-stx clause)
       (let eloop ([use-transformer? #t])
         (syntax-case clause (values in-parallel stop-before stop-after :do-in)
+          [[(id ...) (form . rest)]
+           (and use-transformer?
+                (identifier? #'form)
+                (raw-sequence-transformer? (syntax-local-value #'form (lambda () #f))))
+           (let ([m (syntax-local-value #'form)])
+             (let ([xformer (sequence-transformer-ref m 1)]
+                   [introducer (make-syntax-introducer)]
+                   [certifier (sequence-transformer-ref m 2)])
+               (let ([xformed (xformer (introducer (syntax-local-introduce clause)))])
+                 (if xformed
+                     (expand-clause orig-stx (certify-clause (syntax-case clause ()
+                                                               [(_ rhs) #'rhs])
+                                                             (syntax-local-introduce (introducer xformed)) 
+                                                             certifier
+                                                             introducer))
+                     (eloop #f)))))]
           [[(id ...) rhs]
            (let ([ids (syntax->list #'(id ...))])
              (for-each (lambda (id)
@@ -308,7 +335,17 @@
        (define-syntax id (create-sequence-transformer
                           expr-transformer-expr
                           clause-transformer-expr
-                          (syntax-local-certifier #f)))]))
+                          (syntax-local-certifier #f)
+                          #f))]))
+  
+  (define-syntax define-raw-sequence-syntax
+    (syntax-rules ()
+      [(_ id expr-transformer-expr clause-transformer-expr)
+       (define-syntax id (create-sequence-transformer
+                          expr-transformer-expr
+                          clause-transformer-expr
+                          (syntax-local-certifier #f)
+                          #t))]))
 
   (define (sequence? v)
     (or (do-sequence? v)

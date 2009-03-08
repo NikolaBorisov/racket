@@ -12,7 +12,9 @@
   (syntax-case clauses ()
     [([pats . rhs] ...)
      (nest
-       ([parameterize ([orig-stx stx])]
+       ([begin (unless (syntax->list exprs)
+                 (raise-syntax-error #f "expected a list of patterns" stx))]
+        [parameterize ([orig-stx stx])]
         [let ([len (length (syntax->list exprs))])]
         [with-syntax ([(xs ...) (generate-temporaries exprs)]
                       [(exprs ...) exprs]

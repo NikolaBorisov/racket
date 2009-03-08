@@ -10,11 +10,12 @@
 
 (define-syntax-rule (define-forms parse-id
                       match match* match-lambda match-lambda* match-lambda** match-let
-                      match-let* match-define match-letrec)
+                      match-let* match-define match-letrec
+                      :match :match*)
   (...
    (begin
      (provide match match* match-lambda match-lambda* match-lambda** match-let match-let*
-              match-define match-letrec)
+              match-define match-letrec :match :match*)
      (define-syntax (match* stx)
        (syntax-case stx ()
          [(_ es . clauses)
@@ -104,4 +105,30 @@
           (let ([p (parse-id #'pat (syntax-local-certifier))])
             (with-syntax ([vars (bound-vars p)])
               (syntax/loc stx
-                (define-values vars (match rhs [pat (values . vars)])))))])))))
+                (define-values vars (match rhs [pat (values . vars)])))))]))
+
+     (define-sequence-syntax :match
+       (lambda (stx) (raise-syntax-error #f "used outside of for" stx))
+       (lambda (stx)
+         (syntax-case stx ()
+           [(pat (_ seq-expr))
+            #'[(pat) (:match* seq-expr)]])))
+
+     (define-sequence-syntax :match*
+       (lambda (stx) (raise-syntax-error #f "used outside of for" stx))
+       (lambda (stx)
+         (syntax-case stx ()
+           [(pat (_ seq-expr))
+            (let ([p (parse-id #'pat (syntax-local-certifier))])
+              (with-syntax ([vars (bound-vars p)])
+                 #'[vars 
+                    (:do-in ([(more? get) (sequence-generate seq-expr)])
+                            (void)
+                            ()
+                            (more?)
+                            ([vars (call-with-values get 
+                                       (match-lambda**
+                                          [pat (values . vars)]))])
+                            #t
+                            #t
+                            ())]))]))))))
