@@ -7,7 +7,6 @@
                       syntax/name
                       syntax/struct
                       syntax/stx
-                      scheme/pretty
                       "private/unit-contract-syntax.ss"
                       "private/unit-compiletime.ss"
                       "private/unit-syntax.ss")
@@ -1507,30 +1506,86 @@
              [isigs (map unprocess (unit-info-import-sig-ids ui))]
              [esigs (map unprocess (unit-info-export-sig-ids ui))])
         (values isigs esigs)))
+    (define (drop-from-other-list exp-tagged imp-tagged imp-sources)
+      (let loop ([ts imp-tagged] [ss imp-sources])
+        (cond
+          [(null? ts) null]
+          [(ormap (lambda (tinfo2)
+                    (and (eq? (car (car ts)) (car tinfo2))
+                         (siginfo-subtype (cdr tinfo2) (cdr (car ts)))))
+                  exp-tagged)
+           (loop (cdr ts) (cdr ss))]
+          [else (cons (car ss) (loop (cdr ts) (cdr ss)))])))
+    
+    (define (drop-duplicates tagged-siginfos sources)
+      (let loop ([ts tagged-siginfos] [ss sources] [res-t null] [res-s null])
+        (cond
+          [(null? ts) (values res-t res-s)]
+          [(ormap (lambda (tinfo2)
+                    (and (eq? (car (car ts)) (car tinfo2))
+                         (siginfo-subtype (cdr tinfo2) (cdr (car ts)))))
+                  (cdr ts))
+           (loop (cdr ts) (cdr ss) res-t res-s)]
+          [else (loop (cdr ts) (cdr ss) (cons (car ts) res-t) (cons (car ss) res-s))])))
+    
+    (define (imps/exps-from-units units)
+      (define-values (isigs esigs)
+        (let loop ([units units] [imps null] [exps null])
+          (if (null? units)
+              (values imps exps)
+              (let-values ([(i e) (imps/exps-from-unit (car units))])
+                (loop (cdr units) (append i imps) (append e exps))))))
+      (define-values (isig tagged-import-sigs import-tagged-infos 
+                           import-tagged-sigids import-sigs)
+        (process-unit-import (datum->syntax-object #f isigs)))
+      
+      (define-values (esig tagged-export-sigs export-tagged-infos 
+                           export-tagged-sigids export-sigs)
+        (process-unit-export (datum->syntax-object #f esigs)))
+      (check-duplicate-subs export-tagged-infos esig)
+      (let-values ([(itagged isources) (drop-duplicates import-tagged-infos isig)])
+        (values (drop-from-other-list export-tagged-infos itagged isources) esig)))
+    
     (cond [(identifier? units)
            (let-values ([(isig esig) (imps/exps-from-unit units)])
              (with-syntax ([u units]
                            [(esig ...) esig]
                            [(isig ...) isig])
-               (let ([res
-                      (if define? 
-                          (syntax/loc (error-syntax) (define-values/invoke-unit u (import isig ...) (export esig ...)))
-                          (syntax/loc (error-syntax) (invoke-unit u (import isig ...))))])
-                 (pretty-print (syntax-object->datum res))
-                 res)))]
+               (if define? 
+                   (syntax/loc (error-syntax) (define-values/invoke-unit u (import isig ...) (export esig ...)))
+                   (syntax/loc (error-syntax) (invoke-unit u (import isig ...))))))]
+          [(list? units)
+           (let-values ([(isig esig) (imps/exps-from-units units)])
+             (with-syntax ([(new-unit) (generate-temporaries '(new-unit))]
+                           [(unit ...) units]
+                           [(esig ...) esig]
+                           [(isig ...) isig])
+               (with-syntax ([cunit (syntax/loc (error-syntax)
+                                      (define-compound-unit/infer new-unit
+                                        (import isig ...) (export esig ...) (link unit ...)))])
+                 (if define?
+                     (syntax/loc (error-syntax)
+                       (begin cunit
+                              (define-values/invoke-unit new-unit (import isig ...) (export esig ...))))
+                     (syntax/loc (error-syntax)
+                       (let ()
+                         cunit
+                         (invoke-unit new-unit (import isig ...))))))))]
           ;; just for error handling
           [else (lookup-def-unit units)]))
 
   (define-syntax/err-param (define-values/invoke-unit/infer stx)
     (syntax-case stx ()
+      [(_ (link unit ...))
+       (build-invoke-unit/infer (syntax->list #'(unit ...)) #t)]
       [(_ u) 
        (build-invoke-unit/infer #'u #t)]
       [(_)
        (raise-stx-err "missing unit" stx)]
       [(_ . b)
        (raise-stx-err
-        (format "expected syntax matching (~a <define-unit-identifier>)"
-                (syntax-e (stx-car stx))))]))
+        (format "expected syntax matching (~a <define-unit-identifier>) or (~a (link <define-unit-identifier> ...))"
+                (syntax-e (stx-car stx)) (syntax-e (stx-car stx))))]))
   
   (define-for-syntax (temp-id-with-tags id i)
     (syntax-case i (tag)
@@ -1788,13 +1843,15 @@
   
   (define-syntax/err-param (invoke-unit/infer stx)
     (syntax-case stx ()
+      [(_ (link unit ...))
+       (build-invoke-unit/infer (syntax->list #'(unit ...)) #f)]
       [(_ u) (build-invoke-unit/infer #'u #f)]
       [(_)
        (raise-stx-err "missing unit" stx)]
       [(_ . b)
        (raise-stx-err
-        (format "expected syntax matching (~a <define-unit-identifier>)"
-                (syntax-e (stx-car stx))))]))
+        (format "expected syntax matching (~a <define-unit-identifier>) or (~a (link <define-unit-identifier> ...))"
+                (syntax-e (stx-car stx)) (syntax-e (stx-car stx))))]))
   
   (define-for-syntax (build-unit/s stx)
     (syntax-case stx (import export init-depend)

@@ -11,7 +11,7 @@
           scheme/unit-exptime
           scheme/match))
 
-(provide define-values/link-units/infer cnt)
+(provide cnt)
 
 (define-signature-form (cnt stx)
   (syntax-case stx ()
