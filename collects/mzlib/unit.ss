@@ -7,7 +7,6 @@
                       syntax/name
                       syntax/struct
                       syntax/stx
-                      scheme/pretty
                       "private/unit-contract-syntax.ss"
                       "private/unit-compiletime.ss"
                       "private/unit-syntax.ss")
@@ -1551,7 +1550,6 @@
                   (let-values ([(spec-esig spec-tagged-export-sigs spec-export-tagged-infos 
                                            spec-export-tagged-sigids spec-export-sigs)
                                 (process-unit-export (datum->syntax-object #f exports))])
-                    (printf "exports: ~a~n" spec-esig)
                     (restrict-exports export-tagged-infos
                                       spec-esig spec-export-tagged-infos))]
                  [else esig]))))
@@ -1581,7 +1579,6 @@
                    (syntax/loc (error-syntax) (invoke-unit u (import isig ...))))))]
           [(list? units)
            (let-values ([(isig esig) (imps/exps-from-units units exports)])
-             (printf "esig: ~a~n" esig)
              (with-syntax ([(new-unit) (generate-temporaries '(new-unit))]
                            [(unit ...) units]
                            [(esig ...) esig]
@@ -1591,12 +1588,9 @@
                                         (import isig ...) (export esig ...) (link unit ...)))])
                         
                  (if define?
-                     (let ([res 
-                            (syntax/loc (error-syntax)
-                                        (begin cunit
-                                               (define-values/invoke-unit new-unit (import isig ...) (export esig ...))))])
-                       (pretty-print (syntax-object->datum res))
-                       res)
+                     (syntax/loc (error-syntax)
+                       (begin cunit
+                              (define-values/invoke-unit new-unit (import isig ...) (export esig ...))))
                      (syntax/loc (error-syntax)
                        (let ()
                          cunit
