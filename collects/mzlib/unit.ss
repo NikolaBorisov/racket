@@ -1496,8 +1496,8 @@
         #`(tag #,(car ti) #,(cdr ti))
         (cdr ti)))
   
-  ;; syntax or listof[syntax] boolean -> syntax
-  (define-for-syntax (build-invoke-unit/infer units define?)
+  ;; (syntax or listof[syntax]) boolean (boolean or listof[syntax]) -> syntax
+  (define-for-syntax (build-invoke-unit/infer units define? exports)
     (define (imps/exps-from-unit u)      
       (let* ([ui (lookup-def-unit u)]
              [unprocess (let ([i (make-syntax-delta-introducer u (unit-info-orig-binder ui))])
@@ -1528,7 +1528,7 @@
            (loop (cdr ts) (cdr ss) res-t res-s)]
           [else (loop (cdr ts) (cdr ss) (cons (car ts) res-t) (cons (car ss) res-s))])))
     
-    (define (imps/exps-from-units units)
+    (define (imps/exps-from-units units exports)
       (define-values (isigs esigs)
         (let loop ([units units] [imps null] [exps null])
           (if (null? units)
@@ -1544,18 +1544,39 @@
         (process-unit-export (datum->syntax-object #f esigs)))
       (check-duplicate-subs export-tagged-infos esig)
       (let-values ([(itagged isources) (drop-duplicates import-tagged-infos isig)])
-        (values (drop-from-other-list export-tagged-infos itagged isources) esig)))
-    
+        (values (drop-from-other-list export-tagged-infos itagged isources) 
+                (cond
+                 [(list? exports)
+                  (let-values ([(spec-esig spec-tagged-export-sigs spec-export-tagged-infos 
+                                           spec-export-tagged-sigids spec-export-sigs)
+                                (process-unit-export (datum->syntax-object #f exports))])
+                    (restrict-exports export-tagged-infos
+                                      spec-esig spec-export-tagged-infos))]
+                 [else esig]))))
+        
+    (define (restrict-exports unit-tagged-exports spec-exports spec-tagged-exports)
+      (for-each (lambda (se ste)
+                  (unless (ormap (lambda (ute)
+                                   (and (eq? (car ute) (car ste))
+                                        (siginfo-subtype (cdr ute) (cdr ste))))
+                                 unit-tagged-exports)
+                          (raise-stx-err (format "no subunit exports signature ~a"
+                                                 (syntax-object->datum se))
+                                         se)))
+                spec-exports
+                spec-tagged-exports)
+      spec-exports)
+
     (cond [(identifier? units)
            (let-values ([(isig esig) (imps/exps-from-unit units)])
              (with-syntax ([u units]
                            [(esig ...) esig]
                            [(isig ...) isig])
-               (if define? 
+               (if define?
                    (syntax/loc (error-syntax) (define-values/invoke-unit u (import isig ...) (export esig ...)))
                    (syntax/loc (error-syntax) (invoke-unit u (import isig ...))))))]
           [(list? units)
-           (let-values ([(isig esig) (imps/exps-from-units units)])
+           (let-values ([(isig esig) (imps/exps-from-units units exports)])
              (with-syntax ([(new-unit) (generate-temporaries '(new-unit))]
                            [(unit ...) units]
                            [(esig ...) esig]
@@ -1575,16 +1596,20 @@
           [else (lookup-def-unit units)]))
 
   (define-syntax/err-param (define-values/invoke-unit/infer stx)
-    (syntax-case stx ()
+    (syntax-case stx (export link)
       [(_ (link unit ...))
-       (build-invoke-unit/infer (syntax->list #'(unit ...)) #t)]
+       (build-invoke-unit/infer (syntax->list #'(unit ...)) #t #f)]
+      [(_ (export e ...) (link unit ...))
+       (build-invoke-unit/infer (syntax->list #'(unit ...)) #t (syntax->list #'(e ...)))]
+      [(_ (export e ...) u) 
+       (build-invoke-unit/infer #'u (syntax->list #t #'(e ...)))]
       [(_ u) 
-       (build-invoke-unit/infer #'u #t)]
+       (build-invoke-unit/infer #'u #t #f)]
       [(_)
        (raise-stx-err "missing unit" stx)]
       [(_ . b)
        (raise-stx-err
-        (format "expected syntax matching (~a <define-unit-identifier>) or (~a (link <define-unit-identifier> ...))"
+        (format "expected syntax matching (~a [(export <define-signature-identifier>)] <define-unit-identifier>) or (~a  [(export <define-signature-identifier>)] (link <define-unit-identifier> ...))"
                 (syntax-e (stx-car stx)) (syntax-e (stx-car stx))))]))
   
   (define-for-syntax (temp-id-with-tags id i)
