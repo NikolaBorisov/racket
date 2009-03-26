@@ -7,6 +7,7 @@
                       syntax/name
                       syntax/struct
                       syntax/stx
+                      scheme/pretty
                       "private/unit-contract-syntax.ss"
                       "private/unit-compiletime.ss"
                       "private/unit-syntax.ss")
@@ -1550,6 +1551,7 @@
                   (let-values ([(spec-esig spec-tagged-export-sigs spec-export-tagged-infos 
                                            spec-export-tagged-sigids spec-export-sigs)
                                 (process-unit-export (datum->syntax-object #f exports))])
+                    (printf "exports: ~a~n" spec-esig)
                     (restrict-exports export-tagged-infos
                                       spec-esig spec-export-tagged-infos))]
                  [else esig]))))
@@ -1566,9 +1568,11 @@
                 spec-exports
                 spec-tagged-exports)
       spec-exports)
-
+    (when (and (not define?) exports)
+          (error 'build-invoke-unit/infer 
+                 "internal error: exports for invoke-unit/infer"))
     (cond [(identifier? units)
-           (let-values ([(isig esig) (imps/exps-from-unit units)])
+           (let-values ([(isig esig) (imps/exps-from-units (list units) exports)])
              (with-syntax ([u units]
                            [(esig ...) esig]
                            [(isig ...) isig])
@@ -1577,6 +1581,7 @@
                    (syntax/loc (error-syntax) (invoke-unit u (import isig ...))))))]
           [(list? units)
            (let-values ([(isig esig) (imps/exps-from-units units exports)])
+             (printf "esig: ~a~n" esig)
              (with-syntax ([(new-unit) (generate-temporaries '(new-unit))]
                            [(unit ...) units]
                            [(esig ...) esig]
@@ -1584,10 +1589,14 @@
                (with-syntax ([cunit (syntax/loc (error-syntax)
                                       (define-compound-unit/infer new-unit
                                         (import isig ...) (export esig ...) (link unit ...)))])
+                        
                  (if define?
-                     (syntax/loc (error-syntax)
-                       (begin cunit
-                              (define-values/invoke-unit new-unit (import isig ...) (export esig ...))))
+                     (let ([res 
+                            (syntax/loc (error-syntax)
+                                        (begin cunit
+                                               (define-values/invoke-unit new-unit (import isig ...) (export esig ...))))])
+                       (pretty-print (syntax-object->datum res))
+                       res)
                      (syntax/loc (error-syntax)
                        (let ()
                          cunit
@@ -1602,7 +1611,7 @@
       [(_ (export e ...) (link unit ...))
        (build-invoke-unit/infer (syntax->list #'(unit ...)) #t (syntax->list #'(e ...)))]
       [(_ (export e ...) u) 
-       (build-invoke-unit/infer #'u (syntax->list #t #'(e ...)))]
+       (build-invoke-unit/infer #'u #t (syntax->list #'(e ...)))]
       [(_ u) 
        (build-invoke-unit/infer #'u #t #f)]
       [(_)
@@ -1869,8 +1878,8 @@
   (define-syntax/err-param (invoke-unit/infer stx)
     (syntax-case stx ()
       [(_ (link unit ...))
-       (build-invoke-unit/infer (syntax->list #'(unit ...)) #f)]
-      [(_ u) (build-invoke-unit/infer #'u #f)]
+       (build-invoke-unit/infer (syntax->list #'(unit ...)) #f #f)]
+      [(_ u) (build-invoke-unit/infer #'u #f #f)]
       [(_)
        (raise-stx-err "missing unit" stx)]
       [(_ . b)

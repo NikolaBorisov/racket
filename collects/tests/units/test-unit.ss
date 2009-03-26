@@ -1332,6 +1332,28 @@
   (define-values/invoke-unit/infer (link u v))
   x)
 
+
+(let ()
+  (define-values/invoke-unit/infer (export x-sig) (link u v))
+  x)
+(let ()
+  (define-values/invoke-unit/infer (export x-sig) v)
+  x)
+(test-syntax-error "define-values/invoke-unit/infer: doesn't export y"
+  (define-values/invoke-unit/infer (export y-sig) (link u v)))
+
+(test-runtime-error exn? "unbound variable: x"
+  (let ()
+    (define-values/invoke-unit/infer (export) (link u v))
+    x))
+(test-syntax-error "define-values/invoke-unit/infer: doesn't export y"
+  (define-values/invoke-unit/infer (export y-sig) v))
+(test-runtime-error exn? "unbound variable: x"
+   (let ()
+     (define-values/invoke-unit/infer (export) v)
+     x))
+
+
 (define-unit u (import x-sig) (export) x)
 (test-syntax-error "define-values/invoke-unit/infer: bad imports"
   (define-values/invoke-unit/infer u))
