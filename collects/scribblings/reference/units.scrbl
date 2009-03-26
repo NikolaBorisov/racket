@@ -484,10 +484,10 @@ with the declared imports and exports, otherwise the
 @exnraise[exn:fail:contract] when the @scheme[define-unit-binding]
 form is evaluated.}
 
-@defform*[
+@defform/subs[
 #:literals (link)
-[(invoke-unit/infer unit-id)
- (invoke-unit/infer (link link-unit-id ...))]]{
+(invoke-unit/infer unit-spec)
+[(unit-spec unit-id (link link-unit-id ...))]]{
 
 Like @scheme[invoke-unit], but uses static information associated with
 @scheme[unit-id] to infer which imports must be assembled from the
@@ -495,10 +495,11 @@ current context.  If given a link form containing multiple
 @scheme[link-unit-id]s, then the units are first linked via
 @scheme[define-compound-unit/infer].}
 
-@defform*[
+@defform/subs[
 #:literals (link)
-[(define-values/invoke-unit/infer unit-id)
- (define-values/invoke-unit/infer (link link-unit-id ...))]]{
+(define-values/invoke-unit/infer maybe-exports unit-spec)
+[(maybe-exports code:blank (export tagged-sig-spec ...))
+ (unit-spec unit-id (link link-unit-id ...))]]{
 
 Like @scheme[define-values/invoke-unit], but uses static information
 associated with @scheme[unit-id] to infer which imports must be
