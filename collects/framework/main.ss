@@ -49,7 +49,9 @@
  (prefix scheme: framework:scheme-class^)
  (prefix main: framework:main-class^))
 
-(define-values/invoke-unit/infer (export framework^) (link framework@ standard-mred@))
+(define-values/invoke-unit/infer
+  (export framework^)
+  (link standard-mred@ framework@))
 
 (provide/doc
  (parameter-doc
