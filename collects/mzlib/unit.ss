@@ -7,6 +7,7 @@
                       syntax/name
                       syntax/struct
                       syntax/stx
+                      scheme/pretty
                       "private/unit-contract-syntax.ss"
                       "private/unit-compiletime.ss"
                       "private/unit-syntax.ss")
@@ -1495,24 +1496,41 @@
     (if (car ti)
         #`(tag #,(car ti) #,(cdr ti))
         (cdr ti)))
+  
+  ;; syntax or listof[syntax] boolean -> syntax
+  (define-for-syntax (build-invoke-unit/infer units define?)
+    (define (imps/exps-from-unit u)      
+      (let* ([ui (lookup-def-unit u)]
+             [unprocess (let ([i (make-syntax-delta-introducer u (unit-info-orig-binder ui))])
+                          (lambda (p)
+                            (unprocess-tagged-id (cons (car p) (i (cdr p))))))]
+             [isigs (map unprocess (unit-info-import-sig-ids ui))]
+             [esigs (map unprocess (unit-info-export-sig-ids ui))])
+        (values isigs esigs)))
+    (cond [(identifier? units)
+           (let-values ([(isig esig) (imps/exps-from-unit units)])
+             (with-syntax ([u units]
+                           [(esig ...) esig]
+                           [(isig ...) isig])
+               (let ([res
+                      (if define? 
+                          (syntax/loc (error-syntax) (define-values/invoke-unit u (import isig ...) (export esig ...)))
+                          (syntax/loc (error-syntax) (invoke-unit u (import isig ...))))])
+                 (pretty-print (syntax-object->datum res))
+                 res)))]
+          ;; just for error handling
+          [else (lookup-def-unit units)]))
 
   (define-syntax/err-param (define-values/invoke-unit/infer stx)
     (syntax-case stx ()
-      ((_ u) 
-       (let* ((ui (lookup-def-unit #'u))
-              (unprocess (let ([i (make-syntax-delta-introducer #'u (unit-info-orig-binder ui))])
-                           (lambda (p)
-                             (unprocess-tagged-id (cons (car p) (i (cdr p))))))))
-         (with-syntax (((sig ...) (map unprocess (unit-info-export-sig-ids ui)))
-                       ((isig ...) (map unprocess (unit-info-import-sig-ids ui))))
-           (quasisyntax/loc stx
-             (define-values/invoke-unit u (import isig ...) (export sig ...))))))
-      ((_)
-       (raise-stx-err "missing unit" stx))
-      ((_ . b)
+      [(_ u) 
+       (build-invoke-unit/infer #'u #t)]
+      [(_)
+       (raise-stx-err "missing unit" stx)]
+      [(_ . b)
        (raise-stx-err
         (format "expected syntax matching (~a <define-unit-identifier>)"
-                (syntax-e (stx-car stx)))))))
+                (syntax-e (stx-car stx))))]))
   
   (define-for-syntax (temp-id-with-tags id i)
     (syntax-case i (tag)
@@ -1770,18 +1788,13 @@
   
   (define-syntax/err-param (invoke-unit/infer stx)
     (syntax-case stx ()
-      ((_ u) 
-       (let ((ui (lookup-def-unit #'u)))
-         (with-syntax (((isig ...) (map unprocess-tagged-id
-                                        (unit-info-import-sig-ids ui))))
-           (quasisyntax/loc stx
-             (invoke-unit u (import isig ...))))))
-      ((_)
-       (raise-stx-err "missing unit" stx))
-      ((_ . b)
+      [(_ u) (build-invoke-unit/infer #'u #f)]
+      [(_)
+       (raise-stx-err "missing unit" stx)]
+      [(_ . b)
        (raise-stx-err
         (format "expected syntax matching (~a <define-unit-identifier>)"
-                (syntax-e (stx-car stx)))))))
+                (syntax-e (stx-car stx))))]))
   
   (define-for-syntax (build-unit/s stx)
     (syntax-case stx (import export init-depend)

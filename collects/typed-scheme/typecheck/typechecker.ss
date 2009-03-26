@@ -12,4 +12,4 @@
 (provide-signature-elements typechecker^ tc-expr^)
 
 (define-values/link-units/infer
-  tc-toplevel@ tc-if@ tc-lambda@ tc-dots@ tc-app@ tc-let@ tc-expr@ check-subforms@)
+  (link tc-toplevel@ tc-if@ tc-lambda@ tc-dots@ tc-app@ tc-let@ tc-expr@ check-subforms@))

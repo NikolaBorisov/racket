@@ -1,15 +1,22 @@
 #lang scheme/base
 
-(provide define-require-syntax)
+(provide define-require-syntax (for-syntax require-local-introduce))
 
 (require (for-syntax scheme/base
                      scheme/require-transform))
+
+(define-for-syntax current-introducer (make-parameter #f))
+
+(define-for-syntax (require-local-introduce stx)
+  ((current-introducer) stx))
 
 (define-for-syntax (make-require-macro cert proc)
   (make-require-transformer
    (lambda (stx)
      (let* ([i (make-syntax-introducer)]
-            [new-stx (cert (i (proc (i stx))) i)])
+            [new-stx (cert (i (parameterize ([current-introducer i])
+                                (proc (i stx))))
+                           i)])
        (expand-import new-stx)))))
 
 (define-syntax (define-require-syntax stx)

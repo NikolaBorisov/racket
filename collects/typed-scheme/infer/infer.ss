@@ -9,4 +9,4 @@
 (provide-signature-elements restrict^ infer^)
 
 (define-values/link-units/infer
-  infer@ constraints@ dmap@ restrict@ promote-demote@)
+  (link infer@ constraints@ dmap@ restrict@ promote-demote@))
