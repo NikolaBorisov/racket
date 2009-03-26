@@ -1304,6 +1304,30 @@
 (test-syntax-error "define-compound-unit: bad name"
   (define-compound-unit 1 (import) (link) (export)))
 
+(test-syntax-error "invoke-unit/infer : no unit"
+  (invoke-unit/infer))
+(test-syntax-error "invoke-unit/infer : not a unit"
+  (invoke-unit/infer 1))
+(test-syntax-error "invoke-unit/infer : not a unit"
+  (let ([x 1]) (invoke-unit/infer x)))
+(test-syntax-error "invoke-unit/infer : not a unit"
+  (let-syntax ([x 1]) (invoke-unit/infer x)))
+(test-syntax-error "invoke-unit/infer: too much"
+  (invoke-unit/infer x y))
+
+(define-unit u (import x-sig) (export))
+(define-unit v (import) (export x-sig) (define x 3))
+
+(test-syntax-error "invoke-unit/infer : no unit"
+  (invoke-unit/infer (link)))
+(test-syntax-error "invoke-unit/infer : not a unit"
+  (invoke-unit/infer (link 1 u)))
+(test-syntax-error "invoke-unit/infer : not a unit"
+  (let ([x 1]) (invoke-unit/infer (link u x))))
+(test-syntax-error "invoke-unit/infer : not a unit"
+  (let-syntax ([x 1]) (invoke-unit/infer (link x u))))
+(invoke-unit/infer (link x y))
+
 (test-syntax-error "define-values/invoke-unit/infer: no unit"
   (define-values/invoke-unit/infer))
 (test-syntax-error "define-values/invoke-unit/infer: not a unit"
@@ -1320,6 +1344,8 @@
 (define-unit u (import x-sig) (export) x)
 (define-unit v (import) (export x-sig) (define x 3))
 
+(test-syntax-error "define-values/invoke-unit/infer: no unit"
+  (define-values/invoke-unit/infer (link)))
 (test-syntax-error "define-values/invoke-unit/infer: not a unit"
   (define-values/invoke-unit/infer (link 1 u)))
 (test-syntax-error "define-values/invoke-unit/infer: not a unit"

@@ -1569,6 +1569,8 @@
     (when (and (not define?) exports)
           (error 'build-invoke-unit/infer 
                  "internal error: exports for invoke-unit/infer"))
+    (when (null? units)
+      (raise-stx-err "no units in link clause"))
     (cond [(identifier? units)
            (let-values ([(isig esig) (imps/exps-from-units (list units) exports)])
              (with-syntax ([u units]
