@@ -1317,7 +1317,22 @@
 (test-syntax-error "define-values/invoke-unit/infer: too much"
   (define-values/invoke-unit/infer x y))
 
-(define-unit u (import x-sig) (export))
+(define-unit u (import x-sig) (export) x)
+(define-unit v (import) (export x-sig) (define x 3))
+
+(test-syntax-error "define-values/invoke-unit/infer: not a unit"
+  (define-values/invoke-unit/infer (link 1 u)))
+(test-syntax-error "define-values/invoke-unit/infer: not a unit"
+  (let ([x 1])
+    (define-values/invoke-unit/infer (link u x))))
+(test-syntax-error "define-values/invoke-unit/infer: not a unit"
+  (let-syntax ([x 1])
+    (define-values/invoke-unit/infer (link u x))))
+(let ()
+  (define-values/invoke-unit/infer (link u v))
+  x)
+
+(define-unit u (import x-sig) (export) x)
 (test-syntax-error "define-values/invoke-unit/infer: bad imports"
   (define-values/invoke-unit/infer u))
 (define-unit u (import x-sig y-sig) (export))
