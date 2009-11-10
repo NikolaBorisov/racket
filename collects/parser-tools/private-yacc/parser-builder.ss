@@ -177,7 +177,7 @@
   (let loop ([items items] [table table])
     (and (pair? items)
          (let ([f-item (f (car items))])
-           (if (dict-ref table f-item)
+           (if (dict-ref table f-item #f)
                (car items)
                (loop (cdr items) (if mutating?
                                      (begin (dict-set! table f-item #t) table)
