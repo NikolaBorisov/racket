@@ -11,7 +11,6 @@
          (for-template scheme/base))
 
 (require (only-in "yacc-helper.ss"
-                  duplicate-list?
                   remove-duplicates))
 
 (provide/contract
@@ -195,37 +194,88 @@
 
 ;; Syntax Classes
 
-(define-syntax-class grammar-clause
-  (pattern ((~datum grammar) prod:ntprod ...)
-           #:fail-when (check-duplicate (syntax->list #'(prod.nt ...))
-                                        #:key syntax->datum)
-                       "duplicate nonterminal definition"))
+;; pass1
 
-(define-syntax-class ntprod #:attributes (nt [item 2])
-  (pattern (nt:id ((item:id ...) prec:maybe-prec rhs:expr) ...)))
+(define-pattern-variable the-error-token
+  (datum->syntax #f 'error))
+
+(define-syntax-class p1-grammar-clause
+  (pattern ((~datum grammar) [nt:id . _] ...)
+           #:fail-when (check-duplicate (syntax->list #'(nt ...))
+                                        #:key syntax->datum)
+                       "duplicate nonterminal definition"
+           #:attr nts (let ([t (make-hasheq)])
+                        (for ([nt (syntax->datum #'(nt ...))]) (hash-set! t nt #t)))))
+
+(define-syntax-class p1-token-clause #:attributes ([group 1] [token 1])
+  (pattern ((~datum tokens) group:token-group ...)
+           #:attr tokens (remove-duplicates
+                          (syntax->list #'(the-error-token group.token ... ...))
+                          #:key syntax->datum)
+           #:attr ts (let ([t (make-hasheq)])
+                       (for ([t (syntax->datum #'(the-error-token group.token ... ...))])
+                         t))))
+
+(define-syntax-class token-group #:attributes ([token 1])
+  #:opaque
+  #:description "token group name"
+  (pattern (~var group (static terminals-def? "terminal group"))
+           #:with (token ...) (terminals-def-t (attribute group.value)))
+  (pattern (~var group (static e-terminals-def? "empty terminal group"))
+           #:with (token ...) (e-terminals-def-t (attribute group.value))))
+
+(define-syntax-class (declared-nonterminal nts)
+  (pattern nonterminal:id
+           #:fail-unless (hash-ref nts (syntax-e #'nonterminal) #f)
+                         "not defined as a nonterminal"))
+
+(define-syntax-class (declared-terminal ts)
+  (pattern terminal:id
+           #:fail-unless (hash-ref ts (syntax-e #'terminal) #f)
+                         "not declared as a terminal"))
+
+;; pass2
+
+(define-syntax-class (grammar-clause nts ts)
+  (pattern ((~datum grammar) (~var prod (ntprod nts ts)) ...)))
+
+(define-syntax-class (ntprod nts ts)
+  #:attributes (nt [item 2])
+  (pattern (nt:id ((item:id ...) prec:maybe-prec rhs:expr) ...)
+           #:fail-when (and (hash-ref ts (syntax-e #'nt) #f) #'nt)
+                       "already declared as a terminal"))
 
 (define-splicing-syntax-class maybe-prec
   (pattern (~optional ((~datum prec) token:id))))
 
 (define-syntax-class token-clause
-  (pattern ((~datum tokens) group:id ...)))
+  (pattern ((~datum tokens) . _)))
 
-(define-syntax-class start-clause
-  (pattern ((~datum start) nonterminal:id ...)
+(define-syntax-class (start-clause nts)
+  (pattern ((~datum start) (~var nonterminal (defined-nonterminal nts)))
            #:fail-unless (pair? (syntax->list #'(nonterminal ...)))
                          "Missing start symbol"))
 
-(define-syntax-class end-clause
-  (pattern ((~datum end) token:id ...)
-           ;; FIXME: end tokens should be duplicate-free
+(define-syntax-class (end-clause ts)
+  (pattern ((~datum end) (~var token (declared-terminal ts)) ...)
+           #:fail-when (check-duplicate (syntax->list #'(token ...))
+                                        #:key syntax->datum)
+                       "duplicate end symbol"
            #:fail-unless (pair? (syntax->list #'(token ...)))
                          "end clause must contain at least 1 token"))
 
 (define-syntax-class error-clause
   (pattern ((~datum error) handler:expr)))
 
-(define-syntax-class precs-clause
-  (pattern ((~datum precs) (~and decl (a:associativity token:id ...)) ...)))
+(define-syntax-class (precs-clause ts)
+  (pattern ((~datum precs) (~var decl (precs-decl ts)) ...)
+           #:fail-when (check-duplicate (syntax->list #'(decl.token ... ...))
+                                        #:key syntax->datum)
+                       "duplicate precedence declaration"))
+
+(define-syntax-class (precs-decl ts)
+  #:description "precedence declaration"
+  (pattern (a:associativity (~var token (declared-terminal ts)) ...)))
 
 (define-syntax-class associativity
   (pattern (~datum left))
@@ -249,71 +299,18 @@
 (define (parse-input term-defs start ends prec-decls prods src-pos)
   (let* ([start-syms (map syntax-e start)]
          [list-of-terms (map syntax-e (get-term-list term-defs))]
-         [end-terms
-          (for/list ([end (in-list ends)])
-            (unless (memq (syntax-e end) list-of-terms)
-              (raise-syntax-error 'parser-end-tokens
-                                  (format "End token ~a not defined as a token"
-                                          (syntax-e end))
-                                  end))
-            (syntax-e end))]
+         [end-terms (map syntax-e ends)]
          ;; Get the list of terminals out of input-terms
          [list-of-non-terms
           (syntax-case prods ()
             [((non-term production ...) ...)
-             (begin
-               (for ([nts (syntax->list #'(non-term ...))])
-                 (when (memq (syntax->datum nts) list-of-terms)
-                   (raise-syntax-error 'parser-non-terminals
-                                       (format "~a used as both token and non-terminal"
-                                               (syntax->datum nts))
-                                       nts)))
-               (let ([dup (duplicate-list? (syntax->datum #'(non-term ...)))])
-                 (when dup
-                   (raise-syntax-error 'parser-non-terminals
-                                       (format "non-terminal ~a defined multiple times"
-                                               dup)
-                                       prods)))
-               (syntax->datum #'(non-term ...)))]
-            [_
-             (raise-syntax-error
-              'parser-grammar
-              "Grammar must be of the form (grammar (non-terminal productions ...) ...)"
-              prods)])]
+             (syntax->datum #'(non-term ...))])]
          ;; Check the precedence declarations for errors and turn them into data
          [precs
           (syntax-case prec-decls ()
             [((type term ...) ...)
-             (let ([p-terms (syntax->datum #'(term ... ...))])
-               (cond
-                [(duplicate-list? p-terms) =>
-                 (lambda (d)
-                   (raise-syntax-error
-                    'parser-precedences
-                    (format "duplicate precedence declaration for token ~a" d)
-                    prec-decls))]
-                [else
-                 (for* ([a (syntax->list #'((term ...) ...))]
-                        [t (syntax->list a)])
-                   (unless (memq (syntax->datum t) list-of-terms)
-                     (raise-syntax-error
-                      'parser-precedences
-                      (format "Precedence declared for non-token ~a"
-                              (syntax->datum t))
-                      t)))
-                 (for ([type (in-list (syntax->list #'(type ...)))])
-                   (unless (memq (syntax->datum type) `(left right nonassoc))
-                     (raise-syntax-error
-                      'parser-precedences
-                      "Associativity must be left, right or nonassoc"
-                      type)))
-                 (syntax->datum prec-decls)]))]
-            [#f null]
-            [_
-             (raise-syntax-error
-              'parser-precedences
-              "Precedence declaration must be of the form (precs (assoc term ...) ...) where assoc is left, right or nonassoc"
-              prec-decls)])]
+             (syntax->datum prec-decls)]
+            [#f null])]
          [terms (build-terms list-of-terms precs)]
          [non-terms
           (map (lambda (non-term) (make-non-term non-term #f))

@@ -4,7 +4,8 @@
                      syntax/parse
                      "private-yacc/parser-builder.ss"
                      "private-yacc/grammar.ss"
-                     "private-yacc/yacc-helper.ss"
+                     (only-in "private-yacc/yacc-helper.ss"
+                              display-yacc)
                      "private-yacc/parser-actions.ss"))
 (require "private-lex/token.ss"
          "private-yacc/parser-actions.ss"
@@ -32,19 +33,27 @@
     (vector->list table))))
 
 (define-syntax (parser stx)
-
   (syntax-parse stx
-    [(_ (~or (~once g:grammar-clause #:name "grammar clause")
-             (~once t:token-clause #:name "token clause")
-             (~once s:start-clause #:name "start symbols clause")
-             (~once e:end-clause #:name "end tokens clause")
-             (~once err:error-clause #:name "error clause")
-             (~optional pr:precs-clause #:name "precedence clause")
-             (~optional srcpos:srcpos-clause #:name "source positions clause")
-             (~optional suppress:suppress-clause #:name "suppress clause")
-             (~optional dbg:debug-clause #:too-many "debug clause")
-             (~optional out:yacc-output-clause #:name "yacc-output clause"))
-        ...)
+    [(~and
+      (_ (~or (~once :p1-grammar-clause #:name "grammar clause")
+              (~once :p1-token-clause #:name "token clause")
+              _)
+         ...)
+      (_ (~or (~once (~var g (grammar-clause (attribute nts) (attribute ts)))
+                     #:name "grammar clause")
+              (~once _:token-clause #:name "token clause")
+              (~once (~var s (start-clause (attribute nts)))
+                     #:name "start symbols clause")
+              (~once (~var e (end-clause (attribute ts)))
+                     #:name "end tokens clause")
+              (~once err:error-clause #:name "error clause")
+              (~optional (~var pr (precs-clause (attribute ts)))
+                         #:name "precedence clause")
+              (~optional srcpos:srcpos-clause #:name "source positions clause")
+              (~optional suppress:suppress-clause #:name "suppress clause")
+              (~optional dbg:debug-clause #:too-many "debug clause")
+              (~optional out:yacc-output-clause #:name "yacc-output clause"))
+         ...))
      (define grammar (syntax/loc #'g (g.prod ...)))
      (define tokens (syntax->list #'(t.group ...)))
      (define start (syntax->list #'(s.nonterminal ...)))
