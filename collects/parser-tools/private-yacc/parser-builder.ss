@@ -274,7 +274,7 @@
 (define-syntax-class (start-clause nts)
   (pattern ((~datum start) (~var nonterminal (declared-nonterminal nts)) ...)
            #:fail-unless (pair? (syntax->list #'(nonterminal ...)))
-                         "Missing start symbol"))
+                         "missing start symbol"))
 
 (define-syntax-class (end-clause ts)
   (pattern ((~datum end) (~var token (declared-terminal ts)) ...)
@@ -345,39 +345,14 @@
       (hash-set! non-term-table (gram-sym-symbol nt) nt))
 
     (let* (
-           ;; parse-prod: syntax -> gram-sym vector
-           [parse-prod
-            (lambda (prod-so)
-              (syntax-case prod-so ()
-                [(prod-rhs-sym ...)
-                 (andmap identifier? (syntax->list prod-so))
-                 (list->vector
-                  (for/list ([s (syntax->list prod-so)])
-                    (or (hash-ref term-table (syntax->datum s) #f)
-                        (hash-ref non-term-table (syntax->datum s)))))]))]
 
-           ;; parse-action: syntax * syntax -> syntax
-           (parse-action 
-            (lambda (rhs act)
-              (let-values ([(args biggest) (get-args 1 (syntax->list rhs) src-pos term-defs)])
-                (let ([act 
-                       (if biggest
-                           (with-syntax ([$n-start-pos (datum->syntax (car biggest) '$n-start-pos)]
-                                         [$n-end-pos (datum->syntax (cdr biggest) '$n-end-pos)])
-                             #`(let ([$n-start-pos #,(car biggest)]
-                                     [$n-end-pos #,(cdr biggest)])
-                                 #,act))
-                           act)])
-                  (quasisyntax/loc act
-                    (lambda #,args
-                      #,act))))))
 
            ;; parse-prod+action: non-term * syntax -> production
            (parse-prod+action
             (lambda (nt prod-so)
               (syntax-case prod-so ()
                 [(prod-rhs action)
-                 (let ([p (parse-prod #'prod-rhs)])
+                 (let ([p (parse-prod term-table non-term-table #'prod-rhs)])
                    (make-prod 
                     nt
                     p
@@ -389,10 +364,10 @@
                                 (term-prec gs)
                                 (loop (sub1 i))))
                           #f))
-                    (parse-action #'prod-rhs #'action)))]
+                    (parse-action term-defs src-pos #'prod-rhs #'action)))]
                 [(prod-rhs (prec term) action)
                  (identifier? #'term)
-                 (let ([p (parse-prod #'prod-rhs)])
+                 (let ([p (parse-prod term-table non-term-table #'prod-rhs)])
                    (make-prod 
                     nt 
                     p
@@ -407,7 +382,7 @@
                                    "unrecognized terminal ~a in precedence declaration"
                                    (syntax->datum #'term))
                                   #'term))))
-                    (parse-action #'prod-rhs #'action)))]
+                    (parse-action term-defs src-pos #'prod-rhs #'action)))]
                 [_
                  (raise-syntax-error
                   'parser-production-rhs
@@ -465,6 +440,33 @@
                      (map (lambda (term-name)
                             (hash-ref term-table term-name))
                           end-terms))))))
+
+;; parse-prod: hash hash syntax -> (vectorof gram-sym)
+;; Production syntax has already been validated.
+(define (parse-prod term-table non-term-table prod-so)
+  (syntax-case prod-so ()
+    [(prod-rhs-sym ...)
+     (list->vector
+      (for/list ([s (syntax->list prod-so)])
+        (or (hash-ref term-table (syntax->datum s) #f)
+            (hash-ref non-term-table (syntax->datum s)))))]))
+
+;; parse-action: ?? ?? syntax syntax -> syntax
+(define (parse-action term-defs src-pos rhs act)
+  (let-values ([(args biggest) (get-args 1 (syntax->list rhs) src-pos term-defs)])
+    (let ([act 
+           (if biggest
+               (with-syntax ([$n-start-pos (datum->syntax (car biggest) '$n-start-pos)]
+                             [$n-end-pos (datum->syntax (cdr biggest) '$n-end-pos)])
+                 #`(let ([$n-start-pos #,(car biggest)]
+                         [$n-end-pos #,(cdr biggest)])
+                     #,act))
+               act)])
+      (quasisyntax/loc act
+        (lambda #,args
+          #,act)))))
+
+
 
 
 ;; get-args: ??? -> (values (listof syntax) (or/c #f (cons integer? stx)))
