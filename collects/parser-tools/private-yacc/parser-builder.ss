@@ -35,20 +35,6 @@
          debug-clause
          yacc-output-clause)
 
-#|
-;; routines for parsing the input to the parser generator and producing a
-;; grammar (See grammar.ss)
-
-(provide/contract
- [parse-input
-  (-> (listof identifier?) (listof identifier?) (listof identifier?)
-      (or/c false/c syntax?) syntax? any/c
-      (is-a?/c grammar%))]
- [get-term-list
-  (-> (listof identifier?)
-      (listof identifier?))])
-|#
-
 (define stx-for-original-property
   (read-syntax #f (open-input-string "original")))
 
@@ -344,48 +330,36 @@
     (for ([nt (in-list non-terms)])
       (hash-set! non-term-table (gram-sym-symbol nt) nt))
 
-    (let* (
-
-           )
-
-      (for ([sstx (in-list start)] [ssym (in-list start-syms)])
-        (unless (memq ssym list-of-non-terms)
-          (raise-syntax-error
-           'parser-start
-           (format "Start symbol ~a not defined as a non-terminal" ssym)
-           sstx)))
-
-      (let* ([starts (map (lambda (x) (make-non-term (gensym) #f)) start-syms)]
-             [end-non-terms (map (lambda (x) (make-non-term (gensym) #f)) start-syms)]
-             [parsed-prods
-              (for/list ([prods-so (syntax->list prods)])
-                (parse-prods-for-nt term-table non-term-table term-defs src-pos prods-so))]
-             [start-prods
-              (for/list ([start (in-list starts)] [end-non-term (in-list end-non-terms)])
-                (list (make-prod start (vector end-non-term) #f #f
-                                 #'(lambda (x) x))))]
-             [prods 
-              `(,@start-prods
-                ,@(for/list ([end-nt (in-list end-non-terms)]
-                             [start-sym (in-list start-syms)])
-                    (for/list ([end (in-list end-terms)])
-                      (make-prod end-nt
-                                 (vector
-                                  (hash-ref non-term-table start-sym)
-                                  (hash-ref term-table end))
-                                 #f
-                                 #f
-                                 #'(lambda (x) x))))
-                ,@parsed-prods)])
-
-        (make-object grammar%
-                     prods
-                     (map car start-prods)
-                     terms
-                     (append starts (append end-non-terms non-terms))
-                     (map (lambda (term-name)
-                            (hash-ref term-table term-name))
-                          end-terms))))))
+    (let* ([starts (map (lambda (x) (make-non-term (gensym) #f)) start-syms)]
+           [end-non-terms (map (lambda (x) (make-non-term (gensym) #f)) start-syms)]
+           [parsed-prods
+            (for/list ([prods-so (syntax->list prods)])
+              (parse-prods-for-nt term-table non-term-table term-defs src-pos prods-so))]
+           [start-prods
+            (for/list ([start (in-list starts)] [end-non-term (in-list end-non-terms)])
+              (list (make-prod start (vector end-non-term) #f #f
+                               #'(lambda (x) x))))]
+           [prods 
+            `(,@start-prods
+              ,@(for/list ([start-sym (in-list start-syms)]
+                           [end-nt (in-list end-non-terms)])
+                  (for/list ([end (in-list end-terms)])
+                    (make-prod end-nt
+                               (vector
+                                (hash-ref non-term-table start-sym)
+                                (hash-ref term-table end))
+                               #f
+                               #f
+                               #'(lambda (x) x))))
+              ,@parsed-prods)])
+      (make-object grammar%
+                   prods
+                   (map car start-prods)
+                   terms
+                   (append starts (append end-non-terms non-terms))
+                   (map (lambda (term-name)
+                          (hash-ref term-table term-name))
+                        end-terms)))))
 
 
 ;; parse-prods-for-nt : hash hash ?? ?? syntax -> (listof production)
@@ -400,7 +374,26 @@
 ;; Production syntax already validated.
 ;; FIXME
 (define (parse-prod+action term-table non-term-table term-defs src-pos nt prod-so)
-  (syntax-case prod-so ()
+  (syntax-parse prod-so
+    [(prod-rhs (~optional ((~datum prec) term)) action)
+     (let* ([p (parse-prod term-table non-term-table #'prod-rhs)]
+            [prec (parse-prec term-table p (attribute term))]
+            [a (parse-action term-defs src-pos #'prod-rhs #'action)])
+       (make-prod nt p #f prec a))]))
+
+;; parse-prec : hash vector id/#f -> prec?
+(define (parse-prec term-table p prec-t)
+  (if prec-t
+      (term-prec (hash-ref term-table (syntax->datum prec-t)))
+      (let loop ([i (sub1 (vector-length p))])
+        (if (>= i 0)
+            (let ([gs (vector-ref p i)])
+              (if (term? gs)
+                  (term-prec gs)
+                  (loop (sub1 i))))
+            #f))))
+
+#|
     [(prod-rhs action)
      (let ([p (parse-prod term-table non-term-table #'prod-rhs)])
        (make-prod 
@@ -433,6 +426,7 @@
                        (syntax->datum #'term))
                       #'term))))
         (parse-action term-defs src-pos #'prod-rhs #'action)))]))
+|#
 
 ;; parse-prod: hash hash syntax -> (vectorof gram-sym)
 ;; Production syntax has already been validated.
@@ -458,8 +452,6 @@
       (quasisyntax/loc act
         (lambda #,args
           #,act)))))
-
-
 
 
 ;; get-args: ??? -> (values (listof syntax) (or/c #f (cons integer? stx)))
