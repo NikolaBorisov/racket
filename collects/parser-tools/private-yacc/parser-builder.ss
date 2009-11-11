@@ -208,7 +208,7 @@
                          (hash-set! ht t #t))
                        ht)))
 
-(define-syntax-class token-group #:attributes ([token 1])
+(define-syntax-class token-group
   #:opaque
   #:description "token group name"
   (pattern (~var group (static terminals-def? "terminal group"))
@@ -240,7 +240,7 @@
 
 (define-syntax-class (ntprod nts ts ends)
   #:attributes (nt [i 2])
-  (pattern (nt:id (((~var i (item nts ts ends)) ...) prec:maybe-prec rhs:expr) ...)
+  (pattern (nt:id (((~var i (item nts ts ends)) ...) (~var prec (maybe-prec ts)) rhs:expr) ...)
            #:fail-when (and (hash-ref ts (syntax-e #'nt) #f) #'nt)
                        "already declared as a terminal"))
 
@@ -251,8 +251,8 @@
            #:fail-when (hash-ref ends (syntax-e #'i) #f)
                        "end token cannot be used in a production"))
 
-(define-splicing-syntax-class maybe-prec
-  (pattern (~optional ((~datum prec) token:id))))
+(define-splicing-syntax-class (maybe-prec ts)
+  (pattern (~optional ((~datum prec) (~var token (declared-terminal ts))))))
 
 (define-syntax-class token-clause
   (pattern ((~datum tokens) . _)))
@@ -392,41 +392,6 @@
                   (term-prec gs)
                   (loop (sub1 i))))
             #f))))
-
-#|
-    [(prod-rhs action)
-     (let ([p (parse-prod term-table non-term-table #'prod-rhs)])
-       (make-prod 
-        nt
-        p
-        #f
-        (let loop ((i (sub1 (vector-length p))))
-          (if (>= i 0)
-              (let ((gs (vector-ref p i)))
-                (if (term? gs)
-                    (term-prec gs)
-                    (loop (sub1 i))))
-              #f))
-        (parse-action term-defs src-pos #'prod-rhs #'action)))]
-    [(prod-rhs (prec term) action)
-     (identifier? #'term)
-     (let ([p (parse-prod term-table non-term-table #'prod-rhs)])
-       (make-prod 
-        nt 
-        p
-        #f
-        (term-prec
-         (hash-ref term-table 
-                   (syntax->datum #'term)
-                   (lambda ()
-                     (raise-syntax-error
-                      'parser-production-rhs
-                      (format
-                       "unrecognized terminal ~a in precedence declaration"
-                       (syntax->datum #'term))
-                      #'term))))
-        (parse-action term-defs src-pos #'prod-rhs #'action)))]))
-|#
 
 ;; parse-prod: hash hash syntax -> (vectorof gram-sym)
 ;; Production syntax has already been validated.
