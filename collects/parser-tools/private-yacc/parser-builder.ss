@@ -1,17 +1,16 @@
 #lang scheme/base
-(require ;; scheme/list
+(require scheme/list
          scheme/class
          scheme/contract
          scheme/dict
          syntax/parse
+         (only-in unstable/syntax
+                  define-pattern-variable)
          "grammar.ss"
          "table.ss"
          "parser-actions.ss"
          "../private-lex/token-syntax.ss"
          (for-template scheme/base))
-
-(require (only-in "yacc-helper.ss"
-                  remove-duplicates))
 
 (provide/contract
  [build-parser
@@ -19,7 +18,9 @@
       (listof identifier?) (or/c syntax? false/c) syntax?
       (values any/c any/c any/c any/c))])
 
-(provide grammar-clause
+(provide p1-grammar-clause
+         p1-token-clause
+         grammar-clause
          ntprod
          maybe-prec
          token-clause
@@ -205,16 +206,19 @@
                                         #:key syntax->datum)
                        "duplicate nonterminal definition"
            #:attr nts (let ([t (make-hasheq)])
-                        (for ([nt (syntax->datum #'(nt ...))]) (hash-set! t nt #t)))))
+                        (for ([nt (syntax->datum #'(nt ...))]) (hash-set! t nt #t))
+                        t)))
 
-(define-syntax-class p1-token-clause #:attributes ([group 1] [token 1])
+(define-syntax-class p1-token-clause
   (pattern ((~datum tokens) group:token-group ...)
-           #:attr tokens (remove-duplicates
-                          (syntax->list #'(the-error-token group.token ... ...))
-                          #:key syntax->datum)
-           #:attr ts (let ([t (make-hasheq)])
+           #:with (token ...)
+                  (remove-duplicates
+                   (syntax->list #'(the-error-token group.token ... ...))
+                   #:key syntax->datum)
+           #:attr ts (let ([ht (make-hasheq)])
                        (for ([t (syntax->datum #'(the-error-token group.token ... ...))])
-                         t))))
+                         (hash-set! ht t #t))
+                       ht)))
 
 (define-syntax-class token-group #:attributes ([token 1])
   #:opaque
@@ -252,7 +256,7 @@
   (pattern ((~datum tokens) . _)))
 
 (define-syntax-class (start-clause nts)
-  (pattern ((~datum start) (~var nonterminal (defined-nonterminal nts)))
+  (pattern ((~datum start) (~var nonterminal (declared-nonterminal nts)) ...)
            #:fail-unless (pair? (syntax->list #'(nonterminal ...)))
                          "Missing start symbol"))
 
@@ -545,4 +549,5 @@
   (remove-duplicates
    (cons (datum->syntax #f 'error)
          (apply append
-                (map get-terms-from-def term-group-names)))))
+                (map get-terms-from-def term-group-names)))
+   #:key syntax->datum))
