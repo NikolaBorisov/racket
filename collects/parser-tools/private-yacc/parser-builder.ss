@@ -346,63 +346,7 @@
 
     (let* (
 
-
-           ;; parse-prod+action: non-term * syntax -> production
-           (parse-prod+action
-            (lambda (nt prod-so)
-              (syntax-case prod-so ()
-                [(prod-rhs action)
-                 (let ([p (parse-prod term-table non-term-table #'prod-rhs)])
-                   (make-prod 
-                    nt
-                    p
-                    #f
-                    (let loop ((i (sub1 (vector-length p))))
-                      (if (>= i 0)
-                          (let ((gs (vector-ref p i)))
-                            (if (term? gs)
-                                (term-prec gs)
-                                (loop (sub1 i))))
-                          #f))
-                    (parse-action term-defs src-pos #'prod-rhs #'action)))]
-                [(prod-rhs (prec term) action)
-                 (identifier? #'term)
-                 (let ([p (parse-prod term-table non-term-table #'prod-rhs)])
-                   (make-prod 
-                    nt 
-                    p
-                    #f
-                    (term-prec
-                     (hash-ref term-table 
-                               (syntax->datum #'term)
-                               (lambda ()
-                                 (raise-syntax-error
-                                  'parser-production-rhs
-                                  (format
-                                   "unrecognized terminal ~a in precedence declaration"
-                                   (syntax->datum #'term))
-                                  #'term))))
-                    (parse-action term-defs src-pos #'prod-rhs #'action)))]
-                [_
-                 (raise-syntax-error
-                  'parser-production-rhs
-                  "production must have form [(symbol ...) expression] or [(symbol ...) (prec symbol) expression]"
-                  prod-so)])))
-
-           ;; parse-prod-for-nt: syntax -> production list
-           [parse-prods-for-nt
-            (lambda (prods-so)
-              (syntax-case prods-so ()
-                [(nt productions ...)
-                 (> (length (syntax->list #'(productions ...))) 0)
-                 (let ((nt (hash-ref non-term-table (syntax->datum #'nt))))
-                   (for/list ([p (in-list (syntax->list #'(productions ...)))])
-                     (parse-prod+action nt p)))]
-                [_
-                 (raise-syntax-error
-                  'parser-productions
-                  "A production for a non-terminal must be (non-term right-hand-side ...) with at least 1 right hand side"
-                  prods-so)]))])
+           )
 
       (for ([sstx (in-list start)] [ssym (in-list start-syms)])
         (unless (memq ssym list-of-non-terms)
@@ -413,7 +357,9 @@
 
       (let* ([starts (map (lambda (x) (make-non-term (gensym) #f)) start-syms)]
              [end-non-terms (map (lambda (x) (make-non-term (gensym) #f)) start-syms)]
-             [parsed-prods (map parse-prods-for-nt (syntax->list prods))]
+             [parsed-prods
+              (for/list ([prods-so (syntax->list prods)])
+                (parse-prods-for-nt term-table non-term-table term-defs src-pos prods-so))]
              [start-prods
               (for/list ([start (in-list starts)] [end-non-term (in-list end-non-terms)])
                 (list (make-prod start (vector end-non-term) #f #f
@@ -440,6 +386,53 @@
                      (map (lambda (term-name)
                             (hash-ref term-table term-name))
                           end-terms))))))
+
+
+;; parse-prods-for-nt : hash hash ?? ?? syntax -> (listof production)
+(define (parse-prods-for-nt term-table non-term-table term-defs src-pos prods-so)
+  (syntax-case prods-so ()
+    [(nt productions ...)
+     (let ((nt (hash-ref non-term-table (syntax->datum #'nt))))
+       (for/list ([p (in-list (syntax->list #'(productions ...)))])
+         (parse-prod+action term-table non-term-table term-defs src-pos nt p)))]))
+
+;; parse-prod+action : hash hash ?? ?? non-term syntax -> production
+;; Production syntax already validated.
+;; FIXME
+(define (parse-prod+action term-table non-term-table term-defs src-pos nt prod-so)
+  (syntax-case prod-so ()
+    [(prod-rhs action)
+     (let ([p (parse-prod term-table non-term-table #'prod-rhs)])
+       (make-prod 
+        nt
+        p
+        #f
+        (let loop ((i (sub1 (vector-length p))))
+          (if (>= i 0)
+              (let ((gs (vector-ref p i)))
+                (if (term? gs)
+                    (term-prec gs)
+                    (loop (sub1 i))))
+              #f))
+        (parse-action term-defs src-pos #'prod-rhs #'action)))]
+    [(prod-rhs (prec term) action)
+     (identifier? #'term)
+     (let ([p (parse-prod term-table non-term-table #'prod-rhs)])
+       (make-prod 
+        nt 
+        p
+        #f
+        (term-prec
+         (hash-ref term-table 
+                   (syntax->datum #'term)
+                   (lambda ()
+                     (raise-syntax-error
+                      'parser-production-rhs
+                      (format
+                       "unrecognized terminal ~a in precedence declaration"
+                       (syntax->datum #'term))
+                      #'term))))
+        (parse-action term-defs src-pos #'prod-rhs #'action)))]))
 
 ;; parse-prod: hash hash syntax -> (vectorof gram-sym)
 ;; Production syntax has already been validated.
