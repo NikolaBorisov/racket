@@ -37,9 +37,12 @@
     [(~and
       (_ (~or (~once pg:p1-grammar-clause #:name "grammar clause")
               (~once pt:p1-token-clause #:name "token clause")
+              (~once pe:p1-end-clause #:name "end tokens clause")
               _)
          ...)
-      (_ (~or (~once (~var g (grammar-clause (attribute pg.nts) (attribute pt.ts)))
+      (_ (~or (~once (~var g (grammar-clause (attribute pg.nts)
+                                             (attribute pt.ts)
+                                             (attribute pe.ends)))
                      #:name "grammar clause")
               (~once _:token-clause #:name "token clause")
               (~once (~var s (start-clause (attribute pg.nts)))

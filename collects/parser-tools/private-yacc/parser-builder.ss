@@ -20,6 +20,7 @@
 
 (provide p1-grammar-clause
          p1-token-clause
+         p1-end-clause
          grammar-clause
          ntprod
          maybe-prec
@@ -196,6 +197,7 @@
 ;; Syntax Classes
 
 ;; pass1
+;; Gather terminal names, nonterminal names, and end token names.
 
 (define-pattern-variable the-error-token
   (datum->syntax #f 'error))
@@ -205,9 +207,9 @@
            #:fail-when (check-duplicate (syntax->list #'(nt ...))
                                         #:key syntax->datum)
                        "duplicate nonterminal definition"
-           #:attr nts (let ([t (make-hasheq)])
-                        (for ([nt (syntax->datum #'(nt ...))]) (hash-set! t nt #t))
-                        t)))
+           #:attr nts (let ([ht (make-hasheq)])
+                        (for ([nt (syntax->datum #'(nt ...))]) (hash-set! ht nt #t))
+                        ht)))
 
 (define-syntax-class p1-token-clause
   (pattern ((~datum tokens) group:token-group ...)
@@ -228,6 +230,13 @@
   (pattern (~var group (static e-terminals-def? "empty terminal group"))
            #:with (token ...) (e-terminals-def-t (attribute group.value))))
 
+(define-syntax-class p1-end-clause
+  (pattern ((~datum end) token:id ...)
+           #:attr ends (let ([ht (make-hasheq)])
+                         (for ([t (syntax->datum #'(token ...))])
+                           (hash-set! ht t #t))
+                         ht)))
+
 (define-syntax-class (declared-nonterminal nts)
   (pattern nonterminal:id
            #:fail-unless (hash-ref nts (syntax-e #'nonterminal) #f)
@@ -240,14 +249,21 @@
 
 ;; pass2
 
-(define-syntax-class (grammar-clause nts ts)
-  (pattern ((~datum grammar) (~var prod (ntprod nts ts)) ...)))
+(define-syntax-class (grammar-clause nts ts ends)
+  (pattern ((~datum grammar) (~var prod (ntprod nts ts ends)) ...)))
 
-(define-syntax-class (ntprod nts ts)
-  #:attributes (nt [item 2])
-  (pattern (nt:id ((item:id ...) prec:maybe-prec rhs:expr) ...)
+(define-syntax-class (ntprod nts ts ends)
+  #:attributes (nt [i 2])
+  (pattern (nt:id (((~var i (item nts ts ends)) ...) prec:maybe-prec rhs:expr) ...)
            #:fail-when (and (hash-ref ts (syntax-e #'nt) #f) #'nt)
                        "already declared as a terminal"))
+
+(define-syntax-class (item nts ts ends)
+  #:description "terminal or nonterminal name"
+  (pattern i:id
+           #:when (or (hash-ref nts (syntax-e #'i) #f) (hash-ref ts (syntax-e #'i) #f))
+           #:fail-when (hash-ref ends (syntax-e #'i) #f)
+                       "end token cannot be used in a production"))
 
 (define-splicing-syntax-class maybe-prec
   (pattern (~optional ((~datum prec) token:id))))
@@ -335,34 +351,10 @@
               (syntax-case prod-so ()
                 [(prod-rhs-sym ...)
                  (andmap identifier? (syntax->list prod-so))
-                 (begin
-                   (for ([t (in-list (syntax->list prod-so))])
-                     (when (memq (syntax->datum t) end-terms)
-                       (raise-syntax-error
-                        'parser-production-rhs
-                        (format "~a is an end token and cannot be used in a production"
-                                (syntax->datum t))
-                        t)))
-
-                   (list->vector
-                    (for/list ([s (syntax->list prod-so)])
-                      (hash-ref term-table 
-                                (syntax->datum s)
-                                (lambda ()
-                                  (hash-ref non-term-table
-                                            (syntax->datum s)
-                                            (lambda ()
-                                              (raise-syntax-error
-                                               'parser-production-rhs
-                                               (format 
-                                                "~a is not declared as a terminal or non-terminal"
-                                                (syntax->datum s))
-                                               s))))))))]
-                [_
-                 (raise-syntax-error
-                  'parser-production-rhs
-                  "production right-hand-side must have form (symbol ...)"
-                  prod-so)]))]
+                 (list->vector
+                  (for/list ([s (syntax->list prod-so)])
+                    (or (hash-ref term-table (syntax->datum s) #f)
+                        (hash-ref non-term-table (syntax->datum s)))))]))]
 
            ;; parse-action: syntax * syntax -> syntax
            (parse-action 
