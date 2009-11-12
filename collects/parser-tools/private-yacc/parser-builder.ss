@@ -190,9 +190,11 @@
 (define-syntax-class token-group
   #:opaque
   #:description "token group name"
-  (pattern (~var group (static terminals-def? "terminal group"))
+  (pattern group
+           #:declare group (static terminals-def? "terminal group")
            #:with (token ...) (terminals-def-t (attribute group.value)))
-  (pattern (~var group (static e-terminals-def? "empty terminal group"))
+  (pattern group
+           #:declare group (static e-terminals-def? "empty terminal group")
            #:with (token ...) (e-terminals-def-t (attribute group.value))))
 
 (define-syntax-class p1-end-clause
@@ -215,11 +217,14 @@
 ;; pass2
 
 (define-syntax-class (grammar-clause nts ts ends)
-  (pattern ((~datum grammar) (~var prod (ntprod nts ts ends)) ...)))
+  (pattern ((~datum grammar) prod ...)
+           #:declare prod (ntprod nts ts ends)))
 
 (define-syntax-class (ntprod nts ts ends)
   #:attributes (nt [i 2])
-  (pattern (nt:id (((~var i (item nts ts ends)) ...) (~var prec (maybe-prec ts)) rhs:expr) ...)
+  (pattern (nt:id ((i ...) prec rhs:expr) ...)
+           #:declare i (item nts ts ends)
+           #:declare prec (maybe-prec ts)
            #:fail-when (and (hash-ref ts (syntax-e #'nt) #f) #'nt)
                        "already declared as a terminal"))
 
@@ -231,18 +236,21 @@
                        "end token cannot be used in a production"))
 
 (define-splicing-syntax-class (maybe-prec ts)
-  (pattern (~optional ((~datum prec) (~var token (declared-terminal ts))))))
+  (pattern (~optional ((~datum prec) token))
+           #:declare token (declared-terminal ts)))
 
 (define-syntax-class token-clause
   (pattern ((~datum tokens) . _)))
 
 (define-syntax-class (start-clause nts)
-  (pattern ((~datum start) (~var nonterminal (declared-nonterminal nts)) ...)
+  (pattern ((~datum start) nonterminal ...)
+           #:declare nonterminal (declared-nonterminal nts)
            #:fail-unless (pair? (syntax->list #'(nonterminal ...)))
                          "missing start symbol"))
 
 (define-syntax-class (end-clause ts)
-  (pattern ((~datum end) (~var token (declared-terminal ts)) ...)
+  (pattern ((~datum end) token ...)
+           #:declare token (declared-terminal ts)
            #:fail-when (check-duplicate (syntax->list #'(token ...))
                                         #:key syntax->datum)
                        "duplicate end symbol"
@@ -253,14 +261,16 @@
   (pattern ((~datum error) handler:expr)))
 
 (define-syntax-class (precs-clause ts)
-  (pattern ((~datum precs) (~var decl (precs-decl ts)) ...)
+  (pattern ((~datum precs) decl ...)
+           #:declare decl (precs-decl ts)
            #:fail-when (check-duplicate (syntax->list #'(decl.token ... ...))
                                         #:key syntax->datum)
                        "duplicate precedence declaration"))
 
 (define-syntax-class (precs-decl ts)
   #:description "precedence declaration"
-  (pattern (a:associativity (~var token (declared-terminal ts)) ...)))
+  (pattern (a:associativity token ...)
+           #:declare token (declared-terminal ts)))
 
 (define-syntax-class associativity
   (pattern (~datum left))
