@@ -5,7 +5,7 @@
                      "private-yacc/parser-builder.ss"
                      "private-yacc/grammar.ss"
                      (only-in "private-yacc/yacc-helper.ss"
-                              display-yacc)
+                              write-yacc-output)
                      "private-yacc/parser-actions.ss"))
 (require "private-lex/token.ss"
          "private-yacc/parser-actions.ss"
@@ -75,22 +75,8 @@
                                  precs
                                  grammar)))
        (when (and yacc-output (not (string=? yacc-output "")))
-         (with-handlers [(exn:fail:filesystem?
-                          (lambda (e)
-                            (fprintf 
-                             (current-error-port)
-                             "Cannot write yacc-output to file \"~a\"~n"
-                             yacc-output)))]
-           (call-with-output-file yacc-output
-             (lambda (port)
-               (display-yacc grammar
-                             tokens 
-                             (map syntax->datum start)
-                             (if precs
-                                 (syntax->datum precs)
-                                 #f)
-                             port))
-             #:exists 'truncate)))
+         (write-yacc-output yacc-output grammar tokens (map syntax->datum start)
+                            (if precs (syntax->datum precs) #f)))
        (with-syntax ((check-syntax-fix check-syntax-fix)
                      (err error)
                      (ends end)

@@ -9,6 +9,8 @@
          "grammar.ss"
          "table.ss"
          "parser-actions.ss"
+         (only-in "yacc-helper.ss"
+                  print-grammar+table-info)
          "../private-lex/token-syntax.ss"
          (for-template scheme/base))
 
@@ -53,29 +55,6 @@
             all-tokens
             actions-code
             (fix-check-syntax input-terms start end assocs prods))))
-
-;; print-grammar+table-info : Grammar Table -> void
-(define (print-grammar+table-info grammar table)
-  (let ([num-states (vector-length table)]
-        [num-gram-syms (+ (send grammar get-num-terms)
-                          (send grammar get-num-non-terms))]
-        [num-ht-entries (apply + (map length (vector->list table)))]
-        [num-reduces
-         (let ((ht (make-hasheq)))
-           (for ([x (in-list (map cdr (apply append (vector->list table))))])
-             (when (reduce? x)
-               (hash-set! ht x #t)))
-           (length (hash-map ht void)))])
-    (printf "~a states, ~a grammar symbols, ~a hash-table entries, ~a reduces~n"
-            num-states num-gram-syms num-ht-entries num-reduces)
-    (printf "~a -- ~aKB, previously ~aKB~n"
-            (/ (+ 2 num-states
-                  (* 4 num-states) (* 2 1.5 num-ht-entries)
-                  (* 5 num-reduces)) 256.0)
-            (/ (+ 2 num-states
-                  (* 4 num-states) (* 2 2.3 num-ht-entries)
-                  (* 5 num-reduces)) 256.0)
-            (/ (+ 2 (* num-states num-gram-syms) (* 5 num-reduces)) 256.0))))
 
 ;; fix-check-syntax : (listof identifier?) (listof identifier?) (listof identifier?)
 ;;                    (union syntax? false/c) syntax?) -> syntax?

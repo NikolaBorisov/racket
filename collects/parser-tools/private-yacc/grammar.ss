@@ -3,10 +3,9 @@
 
 (module grammar mzscheme
   
-  (require mzlib/class
+  (require (only scheme/base for/and in-vector)
+           mzlib/class
            mzlib/list
-           (only "yacc-helper.ss"
-                 vector-andmap)
            mzlib/contract)
   
   ;; Each production has a unique index 0 <= index <= number of productions
@@ -241,7 +240,8 @@
 	     (possible-nullable
 	      (lambda (prods)
 		(filter (lambda (prod)
-			  (vector-andmap non-term? (prod-rhs prod)))
+                          (for/and ([x (in-vector (prod-rhs prod))])
+                            (non-term? x)))
 			prods)))
 	     
 	     ;; set-nullables: production list -> production list
@@ -255,9 +255,8 @@
                   ((vector-ref  nullable 
                                 (gram-sym-index (prod-lhs (car prods))))
                    (set-nullables (cdr prods)))
-                  ((vector-andmap (lambda (nt) 
-                                    (vector-ref nullable (gram-sym-index nt)))
-                                  (prod-rhs (car prods)))
+                  ((for/and ([nt (in-vector (prod-rhs (car prods)))])
+                     (vector-ref nullable (gram-sym-index nt)))
                    (vector-set! nullable 
                                 (gram-sym-index (prod-lhs (car prods)))
                                 #t)
