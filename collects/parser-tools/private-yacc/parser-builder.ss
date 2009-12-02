@@ -301,23 +301,16 @@
             [((non-term production ...) ...)
              (syntax->datum #'(non-term ...))])]
          ;; Check the precedence declarations for errors and turn them into data
-         [precs
-          (syntax-case prec-decls ()
-            [((type term ...) ...)
-             (syntax->datum prec-decls)]
-            [#f null])]
-         [terms (build-terms list-of-terms precs)]
+         [terms (build-terms list-of-terms (if prec-decls (syntax->datum prec-decls) null))]
          [non-terms
           (map (lambda (non-term) (make-non-term non-term #f))
                list-of-non-terms)]
-         [term-table (make-hasheq)]
-         [non-term-table (make-hasheq)])
-
-    (for ([t (in-list terms)])
-      (hash-set! term-table (gram-sym-symbol t) t))
-
-    (for ([nt (in-list non-terms)])
-      (hash-set! non-term-table (gram-sym-symbol nt) nt))
+         [term-table
+          (for/hasheq ([t (in-list terms)])
+            (values (gram-sym-symbol t) t))]
+         [non-term-table
+          (for/hasheq ([nt (in-list non-terms)])
+            (values (gram-sym-symbol nt) nt))])
 
     (let* ([starts (map (lambda (x) (make-non-term (gensym) #f)) start-syms)]
            [end-non-terms (map (lambda (x) (make-non-term (gensym) #f)) start-syms)]
