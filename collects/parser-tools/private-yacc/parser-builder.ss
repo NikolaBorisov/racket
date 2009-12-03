@@ -6,6 +6,7 @@
          syntax/parse
          (only-in unstable/syntax
                   define-pattern-variable)
+         unstable/list
          "grammar.ss"
          "table.ss"
          "parser-actions.ss"
@@ -112,52 +113,6 @@
 
 
 ;; ----
-
-
-;; check-duplicate : (listof X)
-;;                   #:key (X -> K)
-;;                   #:equal? (K K -> bool)
-;;                   #:make-dict (-> (dictof K bool))
-;;                -> X or #f
-(define (check-duplicate items
-                        #:key [f values]
-                        #:equal? [same? #f]
-                        #:make-dict [make-dict #f])
-  (cond [(and same? make-dict)
-         (error 'check-duplicate "cannot supply both #:equal? and #:make-dict")]
-        [make-dict
-         (let ([dict (make-dict)])
-           (if (dict-mutable? dict)
-               (check-duplicate/t items f dict #t)
-               (check-duplicate/t items f dict #f)))]
-        [else
-         (let ([same? (or same? equal?)])
-           (cond [(eq? same? equal?)
-                  (check-duplicate/t items f (make-hash) #t)]
-                 [(eq? same? eq?)
-                  (check-duplicate/t items f (make-hasheq) #t)]
-                 [else
-                  (check-duplicate/list items f same?)]))]))
-
-(define (check-duplicate/t items f table mutating?)
-  (let loop ([items items] [table table])
-    (and (pair? items)
-         (let ([f-item (f (car items))])
-           (if (dict-ref table f-item #f)
-               (car items)
-               (loop (cdr items) (if mutating?
-                                     (begin (dict-set! table f-item #t) table)
-                                     (dict-set table f-item #t))))))))
-
-(define (check-duplicate/list items f same?)
-  (let loop ([items items] [sofar null])
-    (and (pair? items)
-         (let ([f-item (f (car items))])
-           (if (for/or ([prev (in-list sofar)])
-                 (same? prev f-item))
-               (car items)
-               (loop (cdr items) (cons f-item sofar)))))))
-
 
 ;; Syntax Classes
 
