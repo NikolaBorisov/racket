@@ -1,5 +1,4 @@
 #lang scheme/base
-
 (require (for-syntax scheme/base
                      syntax/parse
                      "private-yacc/parser-builder.ss"
@@ -8,30 +7,18 @@
                               write-yacc-output)
                      "private-yacc/parser-actions.ss"))
 (require "private-lex/token.ss"
-         "private-yacc/parser-actions.ss"
+         "private-yacc/runtime-action.ss"
          mzlib/etc
          mzlib/pretty
          syntax/readerr)
 
 (provide parser)
 
+;; Internal debugging flag
+;; (Not to be confused with debug option of parser.)
+(define INTERNAL-DEBUG #f)
 
-;; convert-parse-table : (vectorof (listof (cons/c gram-sym? action?))) ->
-;;                       (vectorof (symbol runtime-action hashtable))
-(define-for-syntax (convert-parse-table table)
-  (list->vector
-   (map
-    (lambda (state-entry)
-      (let ((ht (make-hasheq)))
-        (for-each
-         (lambda (gs/action)
-           (hash-set! ht
-                      (gram-sym-symbol (car gs/action))
-                      (action->runtime-action (cdr gs/action))))
-         state-entry)
-        ht))
-    (vector->list table))))
-
+;; parser syntax
 (define-syntax (parser stx)
   (syntax-parse stx
     [(~and
@@ -91,32 +78,131 @@
              (parser-body debug err (quote starts) (quote ends)
                           table all-term-syms actions src-pos))))]))
 
+;; The table is a vector that maps each state to a hash-table that maps a
+;; terminal symbol to either an accept, shift, reduce, or goto structure.
+;; We encode the structures according to the runtime-action data definition in
+;; parser-actions.ss
+(define (parser-body debug? err starts ends table all-term-syms actions src-pos)
+  (define extract
+    (if src-pos extract-src-pos extract-no-src-pos))
 
-(define (reduce-stack stack num ret-vals src-pos)
-  (cond
-   ((> num 0)
-    (let* ((top-frame (car stack))
-           (ret-vals
-            (if src-pos
-                (cons (stack-frame-value top-frame)
-                      (cons (stack-frame-start-pos top-frame)
-                            (cons (stack-frame-end-pos top-frame)
-                                  ret-vals)))
-                (cons (stack-frame-value top-frame) ret-vals))))
-      (reduce-stack (cdr stack) (sub1 num) ret-vals src-pos)))
-   (else (values stack ret-vals))))
+  (define (fix-error stack tok val start-pos end-pos get-token)
+    (define (remove-input tok val start-pos end-pos)
+      (if (memq tok ends)
+          (raise-read-error "parser: Cannot continue after error"
+                            #f #f #f #f #f)
+          (let ((a (find-action stack tok val start-pos end-pos)))
+            (cond [(runtime-shift? a)
+                   (when INTERNAL-DEBUG
+                     (printf "shift:~a~n" (runtime-shift-state a)))
+                   (cons (make-stack-frame (runtime-shift-state a)
+                                           val
+                                           start-pos
+                                           end-pos)
+                         stack)]
+                  [else
+                   (when INTERNAL-DEBUG
+                     (printf "discard input:~a~n" tok))
+                   (let-values (((tok val start-pos end-pos)
+                                 (extract (get-token))))
+                     (remove-input tok val start-pos end-pos))]))))
+    (when debug? (pretty-print stack))
+    (let remove-states ()
+      (let ((a (find-action stack 'error #f start-pos end-pos)))
+        (cond [(runtime-shift? a)
+               (when INTERNAL-DEBUG
+                 (printf "shift:~a~n" (runtime-shift-state a)))
+               (set! stack 
+                     (cons
+                      (make-stack-frame (runtime-shift-state a) 
+                                        #f 
+                                        start-pos
+                                        end-pos)
+                      stack))
+               (remove-input tok val start-pos end-pos)]
+              [else
+               (when INTERNAL-DEBUG
+                 (printf "discard state:~a~n" (car stack)))
+               (cond [(< (length stack) 2)
+                      (raise-read-error "parser: Cannot continue after error"
+                                        #f #f #f #f #f)]
+                     [else
+                      (set! stack (cdr stack))
+                      (remove-states)])]))))
 
-;; extract-helper : (symbol or make-token) any any -> symbol any any any
-(define (extract-helper tok v1 v2)
-  (cond
-   ((symbol? tok)
-    (values tok #f v1 v2))
-   ((token? tok)
-    (values (real-token-name tok) (real-token-value tok) v1 v2))
-   (else (raise-type-error 'parser 
-                           "symbol or struct:token"
-                           0 
-                           tok))))
+  (define (find-action stack tok val start-pos end-pos)
+    (unless (hash-ref all-term-syms tok #f)
+      (if src-pos
+          (err #f tok val start-pos end-pos)
+          (err #f tok val))
+      (raise-read-error (format "parser: got token of unknown type ~a" tok)
+                        #f #f #f #f #f))
+    (hash-ref (vector-ref table (stack-frame-state (car stack))) tok #f))
+
+  (define (make-parser start-number)
+    (lambda (get-token)
+      (unless (and (procedure? get-token)
+                   (procedure-arity-includes? get-token 0))
+        (error 'get-token "expected a nullary procedure, got ~e" get-token))
+      (let parsing-loop ((stack (make-empty-stack start-number))
+                         (ip (get-token)))
+        (let-values (((tok val start-pos end-pos)
+                      (extract ip)))
+          (let ((action (find-action stack tok val start-pos end-pos)))
+            (cond
+             [(runtime-shift? action)
+              (when INTERNAL-DEBUG
+                (printf "shift:~a~n" (runtime-shift-state action)))
+              (parsing-loop (cons (make-stack-frame (runtime-shift-state action)
+                                                    val
+                                                    start-pos
+                                                    end-pos)
+                                  stack)
+                            (get-token))]
+             [(runtime-reduce? action)
+              (when INTERNAL-DEBUG
+                (printf "reduce:~a~n" (runtime-reduce-prod-num action)))
+              (let-values (((new-stack args)
+                            (reduce-stack stack 
+                                          (runtime-reduce-rhs-length action)
+                                          null
+                                          src-pos)))
+                (let ((goto 
+                       (runtime-goto-state
+                        (hash-ref 
+                         (vector-ref table (stack-frame-state (car new-stack)))
+                         (runtime-reduce-lhs action)))))
+                  (parsing-loop 
+                   (cons
+                    (if src-pos
+                        (make-stack-frame
+                         goto 
+                         (apply (vector-ref actions (runtime-reduce-prod-num action)) args)
+                         (if (null? args) start-pos (cadr args))
+                         (if (null? args) 
+                             end-pos
+                             (list-ref args (- (* (runtime-reduce-rhs-length action) 3) 1))))
+                        (make-stack-frame
+                         goto 
+                         (apply (vector-ref actions (runtime-reduce-prod-num action)) args)
+                         #f
+                         #f))
+                    new-stack)
+                   ip)))]
+             [(runtime-accept? action)
+              (when INTERNAL-DEBUG
+                (printf "accept~n"))
+              (stack-frame-value (car stack))]
+             [else 
+              (if src-pos
+                  (err #t tok val start-pos end-pos)
+                  (err #t tok val))
+              (parsing-loop (fix-error stack tok val start-pos end-pos get-token)
+                            (get-token))]))))))
+  (cond [(null? (cdr starts)) (make-parser 0)]
+        [else (for/list ([_start starts] [i (in-naturals 0)])
+                (make-parser i))]))
+
 
 ;; extract-src-pos : position-token -> symbol any any any
 (define (extract-src-pos ip)
@@ -135,139 +221,34 @@
 (define (extract-no-src-pos ip)
   (extract-helper ip #f #f))
 
-(define-struct stack-frame (state value start-pos end-pos) #:inspector (make-inspector))
+;; extract-helper : (symbol or make-token) any any -> symbol any any any
+(define (extract-helper tok v1 v2)
+  (cond
+   ((symbol? tok)
+    (values tok #f v1 v2))
+   ((token? tok)
+    (values (real-token-name tok) (real-token-value tok) v1 v2))
+   (else (raise-type-error 'parser 
+                           "symbol or struct:token"
+                           0 
+                           tok))))
+
+;; Stack
+
+(define-struct stack-frame (state value start-pos end-pos) #:transparent)
 
 (define (make-empty-stack i) (list (make-stack-frame i #f #f #f)))
 
-
-;; The table is a vector that maps each state to a hash-table that maps a
-;; terminal symbol to either an accept, shift, reduce, or goto structure.
-                                        ;  We encode the structures according to the runtime-action data definition in
-;; parser-actions.ss
-(define (parser-body debug? err starts ends table all-term-syms actions src-pos)
-  (local ((define extract
+(define (reduce-stack stack num ret-vals src-pos)
+  (cond
+   ((> num 0)
+    (let* ((top-frame (car stack))
+           (ret-vals
             (if src-pos
-                extract-src-pos
-                extract-no-src-pos))
-          
-          (define (fix-error stack tok val start-pos end-pos get-token)
-            (when debug? (pretty-print stack))
-            (local ((define (remove-input tok val start-pos end-pos)
-                      (if (memq tok ends)
-                          (raise-read-error "parser: Cannot continue after error"
-                                            #f #f #f #f #f)
-                          (let ((a (find-action stack tok val start-pos end-pos)))
-                            (cond
-                             ((runtime-shift? a)
-                              ;; (printf "shift:~a~n" (runtime-shift-state a))
-                              (cons (make-stack-frame (runtime-shift-state a)
-                                                      val
-                                                      start-pos
-                                                      end-pos)
-                                    stack))
-                             (else
-                              ;; (printf "discard input:~a~n" tok)
-                              (let-values (((tok val start-pos end-pos)
-                                            (extract (get-token))))
-                                (remove-input tok val start-pos end-pos))))))))
-                   (let remove-states ()
-                     (let ((a (find-action stack 'error #f start-pos end-pos)))
-                       (cond
-                        ((runtime-shift? a)
-                         ;; (printf "shift:~a~n" (runtime-shift-state a))
-                         (set! stack 
-                               (cons
-                                (make-stack-frame (runtime-shift-state a) 
-                                                  #f 
-                                                  start-pos
-                                                  end-pos)
-                                stack))
-                         (remove-input tok val start-pos end-pos))
-                        (else
-                         ;; (printf "discard state:~a~n" (car stack))
-                         (cond
-                          ((< (length stack) 2)
-                           (raise-read-error "parser: Cannot continue after error"
-                                             #f #f #f #f #f))
-                          (else
-                           (set! stack (cdr stack))
-                           (remove-states)))))))))
-          
-          (define (find-action stack tok val start-pos end-pos)
-            (unless (hash-ref all-term-syms
-                              tok
-                              #f)
-              (if src-pos
-                  (err #f tok val start-pos end-pos)
-                  (err #f tok val))
-              (raise-read-error (format "parser: got token of unknown type ~a" tok)
-                                #f #f #f #f #f))
-            (hash-ref (vector-ref table (stack-frame-state (car stack)))
-                      tok
-                      #f))
-
-          (define (make-parser start-number)
-            (lambda (get-token)
-              (unless (and (procedure? get-token)
-                           (procedure-arity-includes? get-token 0))
-                (error 'get-token "expected a nullary procedure, got ~e" get-token))
-              (let parsing-loop ((stack (make-empty-stack start-number))
-                                 (ip (get-token)))
-                (let-values (((tok val start-pos end-pos)
-                              (extract ip)))
-                  (let ((action (find-action stack tok val start-pos end-pos)))
-                    (cond
-                     ((runtime-shift? action)
-                      ;; (printf "shift:~a~n" (runtime-shift-state action))
-                      (parsing-loop (cons (make-stack-frame (runtime-shift-state action)
-                                                            val
-                                                            start-pos
-                                                            end-pos)
-                                          stack)
-                                    (get-token)))
-                     ((runtime-reduce? action)
-                      ;; (printf "reduce:~a~n" (runtime-reduce-prod-num action))
-                      (let-values (((new-stack args)
-                                    (reduce-stack stack 
-                                                  (runtime-reduce-rhs-length action)
-                                                  null
-                                                  src-pos)))
-                        (let ((goto 
-                               (runtime-goto-state
-                                (hash-ref 
-                                 (vector-ref table (stack-frame-state (car new-stack)))
-                                 (runtime-reduce-lhs action)))))
-                          (parsing-loop 
-                           (cons
-                            (if src-pos
-                                (make-stack-frame
-                                 goto 
-                                 (apply (vector-ref actions (runtime-reduce-prod-num action)) args)
-                                 (if (null? args) start-pos (cadr args))
-                                 (if (null? args) 
-                                     end-pos
-                                     (list-ref args (- (* (runtime-reduce-rhs-length action) 3) 1))))
-                                (make-stack-frame
-                                 goto 
-                                 (apply (vector-ref actions (runtime-reduce-prod-num action)) args)
-                                 #f
-                                 #f))
-                            new-stack)
-                           ip))))
-                     ((runtime-accept? action)
-                      ;; (printf "accept~n")
-                      (stack-frame-value (car stack)))
-                     (else 
-                      (if src-pos
-                          (err #t tok val start-pos end-pos)
-                          (err #t tok val))
-                      (parsing-loop (fix-error stack tok val start-pos end-pos get-token)
-                                    (get-token))))))))))
-         (cond
-          ((null? (cdr starts)) (make-parser 0))
-          (else
-           (let loop ((l starts)
-                      (i 0))
-             (cond
-              ((null? l) null)
-              (else (cons (make-parser i) (loop (cdr l) (add1 i))))))))))
+                (cons (stack-frame-value top-frame)
+                      (cons (stack-frame-start-pos top-frame)
+                            (cons (stack-frame-end-pos top-frame)
+                                  ret-vals)))
+                (cons (stack-frame-value top-frame) ret-vals))))
+      (reduce-stack (cdr stack) (sub1 num) ret-vals src-pos)))
+   (else (values stack ret-vals))))
