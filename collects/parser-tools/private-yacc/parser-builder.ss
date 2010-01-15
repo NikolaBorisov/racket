@@ -17,7 +17,7 @@
 
 (provide/contract
  [build-parser
-  (-> string? any/c any/c (listof identifier?) (listof identifier?)
+  (-> (or/c string? #f) any/c any/c (listof identifier?) (listof identifier?)
       (listof identifier?) (or/c syntax? false/c) syntax?
       (values any/c any/c any/c any/c))])
 
@@ -45,11 +45,11 @@
 (define (build-parser filename src-pos suppress input-terms start end assocs prods)
   (let* ([grammar (parse-input input-terms start end assocs prods src-pos)]
          [table (build-table grammar filename suppress)]
-         [all-tokens (make-hasheq)]
+         [all-tokens
+          (for/hasheq ([term (in-list (send grammar get-terms))])
+            (values (gram-sym-symbol term) #t))]
          [actions-code
-          `(vector ,@(map prod-action (send grammar get-prods)))])
-    (for ([term (in-list (send grammar get-terms))])
-      (hash-set! all-tokens (gram-sym-symbol term) #t))
+          #`(vector #,@(map prod-action (send grammar get-prods)))])
     (when #f ;; DISABLED
       (print-grammar+table-info grammar table))
     (values table

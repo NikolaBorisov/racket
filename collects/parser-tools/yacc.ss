@@ -53,7 +53,7 @@
      (define debug (and (attribute dbg) (syntax-e #'debug.file)))
      (define yacc-output (and (attribute out) (syntax-e #'out.file)))
      (let-values (((table all-term-syms actions check-syntax-fix)
-                   (build-parser (if debug debug "")
+                   (build-parser debug
                                  (and (attribute srcpos) #t)
                                  (and (attribute suppress) #t)
                                  tokens
@@ -61,7 +61,7 @@
                                  end
                                  precs
                                  grammar)))
-       (when (and yacc-output (not (string=? yacc-output "")))
+       (when yacc-output
          (write-yacc-output yacc-output grammar tokens (map syntax->datum start)
                             (if precs (syntax->datum precs) #f)))
        (with-syntax ((check-syntax-fix check-syntax-fix)
