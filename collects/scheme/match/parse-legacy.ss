@@ -14,7 +14,7 @@
 (define (parse/legacy/cert stx cert)
   (define (parse stx) (parse/legacy/cert stx cert))
   (syntax-case* stx (not $ ? and or = quasiquote quote)
-                (lambda (x y) (eq? (syntax-e x) (syntax-e y)))
+    (lambda (x y) (eq? (syntax-e x) (syntax-e y)))
     [(expander args ...)
      (and (identifier? #'expander)
           (match-expander?

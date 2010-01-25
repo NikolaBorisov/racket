@@ -1,6 +1,6 @@
 
 #lang scheme/base
-(require scheme/cmdline)
+(require scheme/cmdline profile profile/render-text)
 
 (define translation (make-vector 128))
 

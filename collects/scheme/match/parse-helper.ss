@@ -3,13 +3,14 @@
 (require (for-template scheme/base)
          syntax/boundmap
          syntax/stx
+         syntax/parse
          scheme/struct-info
          "patterns.ss"
          "compiler.ss")
 
 (provide ddk? parse-literal all-vars pattern-var? match:syntax-err
          match-expander-transform trans-match parse-struct
-         dd-parse parse-quote parse-id)
+         dd-parse parse-quote parse-id ddk literal-pattern)
 
 ;; parse x as a match variable
 ;; x : identifier
@@ -155,8 +156,29 @@
 ;; if #f is returned, was not a ddk identifier
 ;; if #t is returned, no minimum
 ;; if a number is returned, that's the minimum
+
+(define-syntax-class ddk
+  #:description "..."
+  #:attributes (val min)
+  (pattern (~or (~datum ...) (~datum ___))
+           #:attr val #t
+           #:attr min #f)
+  (pattern ddd:id
+           #:attr mtch
+           (regexp-match #rx"^(?:\\.\\.|__)([0-9]+)$"
+                         (symbol->string (syntax-e #'ddd)))
+           #:when (attribute mtch)
+           #:attr num (string->number (cadr (attribute mtch)))
+           #:fail-unless (exact-nonnegative-integer? (attribute num)) "exact non-negative integer in ..k pattern"
+           #:attr val (if (zero? (attribute num)) #t (attribute num))
+           #:attr min (if (zero? (attribute num)) #f (attribute num))))
+(provide ddk)
+
 (define (ddk? s*)
-  (define (./_ c) (or (equal? c #\.) (equal? c #\_)))
+  #;
+  (syntax-parse s*
+    [v:ddk (attribute v.val)]
+    [_ #f])
   (let ([s (syntax->datum s*)])
     (and (symbol? s)
          (if (memq s '(... ___))
@@ -179,6 +201,13 @@
           (regexp? v) (boolean? v) (char? v))
     (make-Exact v)
     #f))
+
+(define-syntax-class literal-pattern
+  (pattern (and p (~or :number :str :keyword :id  :boolean :char))
+           #:attr pat (make-Exact (syntax-e #'p)))
+  (pattern p 
+           #:when (or (bytes? (syntax-e #'p)) (regexp? (syntax-e #'p)) (pregexp? (syntax-e #'p)))
+           #:attr pat (make-Exact (syntax-e #'p))))
 
 ;; (listof pat) syntax -> void
 ;; ps is never null

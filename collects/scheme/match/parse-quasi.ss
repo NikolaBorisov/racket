@@ -3,6 +3,7 @@
 (require (for-template scheme/base)
          syntax/boundmap
          syntax/stx
+         (rename-in syntax/parse [pattern sc:pattern])
          scheme/struct-info
          "patterns.ss"
          "compiler.ss"
@@ -28,6 +29,56 @@
                                (GSeq-mutable? p1))]
         [(Null? p1) p2]
         [else (error 'match "illegal input to append-pats")]))
+
+(define-syntax-class (quasi-pattern cert depth)
+  #:literals (quasiquote quote unquote-splicing)
+  #:attributes (pat)
+  #:description "quasi-pattern"
+  (sc:pattern (unquote (~var p (pattern cert depth)))
+              #:attr pat (attribute p.pat))
+  (sc:pattern ((unquote-splicing (~var p (pattern cert depth))) . (~var rest (quasi-pattern cert depth)))
+              #:fail-unless (null-terminated? (attribute p.pat))
+              "non-list pattern inside `unquote-splicing'"
+              #:attr pat (append-pats (attribute p.pat) (attribute rest.pat)))
+  (sc:pattern ((~var p (quasi-pattern cert (add1 depth))) dd:ddk . (~var rest (quasi-pattern cert depth)))
+              #:attr pat (make-GSeq (list (list (attribute p.pat))) 
+                                    (list (attribute dd.min))
+                                    ;; no upper bound
+                                    (list #f)
+                                    ;; patterns in p get bound to lists
+                                    (list #f)
+                                    (attribute rest.pat)
+                                    #f))
+  (sc:pattern ((~var qp1 (quasi-pattern cert depth)) . (~var qp2 (quasi-pattern cert depth)))
+              #:attr pat (make-Pair (attribute qp1.pat) (attribute qp2.pat)))
+  (sc:pattern struct
+              #:attr key (prefab-struct-key (syntax-e #'struct))
+              #:when (attribute key)
+              #:with ((~var qp (quasi-pattern cert depth)) ...) 
+              (cdr (vector->list (struct->vector (syntax-e #'struct))))
+              #:attr pat (make-And (list 
+                                    (make-Pred 
+                                     #`(struct-type-make-predicate
+                                        (prefab-key->struct-type
+                                         '#,(attribute key) 
+                                         #,(length (syntax->list #'(qp ...))))))
+                                    (make-App 
+                                     #'struct->vector
+                                     (make-Vector 
+                                      (cons (make-Dummy #f) 
+                                            (attribute qp.pat)))))))
+  (sc:pattern #((~var qp (quasi-pattern cert depth)) ...)
+              #:attr pat (make-Vector (attribute qp.pat)))
+  (sc:pattern () #:attr pat (make-Null (make-Dummy #f)))
+  (sc:pattern #&(~var qp (quasi-pattern cert depth))
+              #:attr pat (make-Box (attribute qp.pat)))
+  (sc:pattern lit:literal-pattern
+              #:attr pat (attribute lit.pat)))
+
+(define-syntax-class (pattern cert depth)
+  #:attributes (pat)
+  (sc:pattern (list)
+              #:attr pat #f))
 
 ;; parse stx as a quasi-pattern
 ;; parse/cert parses unquote
@@ -64,9 +115,7 @@
            [pats (cdr (vector->list (struct->vector (syntax-e #'struct))))])
        (make-And (list (make-Pred #`(struct-type-make-predicate (prefab-key->struct-type '#,key #,(length pats))))
                        (make-App #'struct->vector
-                                 (make-Vector (cons (make-Dummy #f) (map pq pats))))))
-       #;
-       (make-PrefabStruct key (map pq pats)))]
+                                 (make-Vector (cons (make-Dummy #f) (map pq pats)))))))]
     ;; the hard cases
     [#(p ...)
      (ormap (lambda (p)
