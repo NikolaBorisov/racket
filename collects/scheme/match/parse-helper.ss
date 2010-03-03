@@ -10,7 +10,8 @@
 
 (provide ddk? parse-literal all-vars pattern-var? match:syntax-err
          match-expander-transform trans-match parse-struct
-         dd-parse parse-quote parse-id ddk literal-pattern)
+         dd-parse parse-quote parse-id ddk literal-pattern
+         null-terminated? append-pats)
 
 ;; parse x as a match variable
 ;; x : identifier
@@ -231,3 +232,23 @@
        (unless (= n l)
          (raise-syntax-error 'match "variable not bound in all or patterns"
                              stx v))))))
+
+
+;; is pat a pattern representing a list?
+(define (null-terminated? pat)
+  (cond [(Pair? pat) (null-terminated? (Pair-d pat))]
+        [(GSeq? pat) (null-terminated? (GSeq-tail pat))]
+        [(Null? pat) #t]
+        [else #f]))
+
+;; combine a null-terminated pattern with another pattern to match afterwards
+(define (append-pats p1 p2)
+  (cond [(Pair? p1) (make-Pair (Pair-a p1) (append-pats (Pair-d p1) p2))]
+        [(GSeq? p1) (make-GSeq (GSeq-headss p1)
+                               (GSeq-mins p1)
+                               (GSeq-maxs p1)
+                               (GSeq-onces? p1)
+                               (append-pats (GSeq-tail p1) p2)
+                               (GSeq-mutable? p1))]
+        [(Null? p1) p2]
+        [else (error 'match "illegal input to append-pats")]))
