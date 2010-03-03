@@ -25,14 +25,11 @@
          p1-token-clause
          p1-end-clause
          grammar-clause
-         ntprod
-         maybe-prec
          token-clause
          start-clause
          end-clause
          error-clause
          precs-clause
-         associativity
          srcpos-clause
          suppress-clause
          debug-clause
@@ -127,9 +124,8 @@
            #:fail-when (check-duplicate (syntax->list #'(nt ...))
                                         #:key syntax->datum)
                        "duplicate nonterminal definition"
-           #:attr nts (let ([ht (make-hasheq)])
-                        (for ([nt (syntax->datum #'(nt ...))]) (hash-set! ht nt #t))
-                        ht)))
+           #:attr nts (for/hasheq ([nt (syntax->datum #'(nt ...))])
+                        (values nt #t))))
 
 (define-syntax-class p1-token-clause
   (pattern ((~datum tokens) group:token-group ...)
@@ -137,10 +133,9 @@
                   (remove-duplicates
                    (syntax->list #'(the-error-token group.token ... ...))
                    #:key syntax->datum)
-           #:attr ts (let ([ht (make-hasheq)])
-                       (for ([t (syntax->datum #'(the-error-token group.token ... ...))])
-                         (hash-set! ht t #t))
-                       ht)))
+           #:attr ts (for/hasheq ([t (syntax->datum
+                                      #'(the-error-token group.token ... ...))])
+                       (values t #t))))
 
 (define-syntax-class token-group
   #:opaque
@@ -154,10 +149,10 @@
 
 (define-syntax-class p1-end-clause
   (pattern ((~datum end) token:id ...)
-           #:attr ends (let ([ht (make-hasheq)])
-                         (for ([t (syntax->datum #'(token ...))])
-                           (hash-set! ht t #t))
-                         ht)))
+           #:attr ends (for/hasheq ([t (syntax->datum #'(token ...))])
+                         (values t #t))))
+
+;; ----
 
 (define-syntax-class (declared-nonterminal nts)
   (pattern nonterminal:id
@@ -177,9 +172,9 @@
 
 (define-syntax-class (ntprod nts ts ends)
   #:attributes (nt [i 2])
-  (pattern (nt:id ((i ...) prec rhs:expr) ...)
+  (pattern (nt:id ((i ...) (~optional ((~datum prec) ~! token)) rhs:expr) ...)
            #:declare i (item nts ts ends)
-           #:declare prec (maybe-prec ts)
+           #:declare token (declared-terminal ts)
            #:fail-when (and (hash-ref ts (syntax-e #'nt) #f) #'nt)
                        "already declared as a terminal"))
 
@@ -189,10 +184,6 @@
            #:when (or (hash-ref nts (syntax-e #'i) #f) (hash-ref ts (syntax-e #'i) #f))
            #:fail-when (hash-ref ends (syntax-e #'i) #f)
                        "end token cannot be used in a production"))
-
-(define-splicing-syntax-class (maybe-prec ts)
-  (pattern (~optional ((~datum prec) token))
-           #:declare token (declared-terminal ts)))
 
 (define-syntax-class token-clause
   (pattern ((~datum tokens) . _)))
