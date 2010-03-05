@@ -89,7 +89,7 @@
               #:attr pat (make-And (map make-Not (attribute p.pat)))]
   [sc:pattern #&p
               #:attr pat (make-Box (attribute p.pat))]
-  [sc:pattern #(es ...)
+  [sc:pattern #(es ...+ :ddk _ ...)
               #:when (ormap ddk? (syntax->list #'(es ...)))
               #:with p #'(es ...)
               #:attr pat (make-And (list (make-Pred #'vector?)
@@ -103,41 +103,36 @@
   [sc:pattern ((~datum ?) e:expr p ...+)
               #:attr pat
               (make-And (cons (make-Pred (cert #'e)) (attribute p.pat)))]
-  #|
-  [(? p)
-   (make-Pred (cert #'p))]
-  [(= f p)
-   (make-App #'f (parse (cert #'p)))]
-  [(quasiquote p)
-   (parse-quasi #'p cert parse/legacy/cert)]
-  [(quote . rest)
-   (parse-quote stx parse)]
-  [() (make-Null (make-Dummy #f))]
-  [(..)
-   (ddk? #'..)
-   (raise-syntax-error 'match "incorrect use of ... in pattern" stx #'..)]
-  [(p .. . rest)
-   (ddk? #'..)
-   (dd-parse parse #'p #'.. #'rest)]
-  [(e . es)
-   (make-Pair (parse #'e) (parse (syntax/loc stx es)))]
-  [x
-   (identifier? #'x)
-   (parse-id #'x)]
-  [v
-   (or (parse-literal (syntax-e #'v))
-       (raise-syntax-error 'match "syntax error in pattern" stx))]
-|#)
+  
+  [sc:pattern ((~datum ?) p:expr)
+              #:attr pat (make-Pred (cert #'p))]
+  [sc:pattern ((~datum =) f p)
+              #:attr pat (make-App (cert #'f) (attribute p.pat))]
+  [sc:pattern ((~literal quasiquote) qp)
+              #:attr pat (attribute qp.pat)]
+  
+  [sc:pattern ((~literal quote) rest:quote-pat)
+              #:attr pat (attribute rest.pat)]
+  [sc:pattern () 
+              #:attr pat (make-Null (make-Dummy #f))]
+  #;[sc:pattern (dd:id)
+              #:fail-when (ddk? #'dd)
+              "incorrect use of ... in pattern"]
+  [sc:pattern ((~var p (legacy-pattern cert (add1 depth))) dd . p-rest)
+              #:when (ddk? #'dd)
+              #:attr pat (dd-parse (attribute p.pat) #'dd (attribute p-rest.pat))]
+  [sc:pattern (p . rest)
+              #:with p-rest (syntax/loc this-syntax #'rest)
+              #:attr pat (make-Pair (attribute p.pat) (attribute p-rest.pat))]
+  [sc:pattern x:id-pat
+              #:attr pat (attribute x.pat)]
+  [sc:pattern lit:literal-pattern
+              #:attr pat (attribute lit.pat)])
 
 (define-qp-class quasi-pattern pattern)
 
 
 (define-syntax-class (pattern cert depth)
-  #:attributes (pat)
-  (sc:pattern (list)
-              #:attr pat #f))
-#;
-(define-syntax-class (legacy-pattern cert depth)
   #:attributes (pat)
   (sc:pattern (list)
               #:attr pat #f))

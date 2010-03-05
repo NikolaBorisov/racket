@@ -11,7 +11,15 @@
 (provide ddk? parse-literal all-vars pattern-var? match:syntax-err
          match-expander-transform trans-match parse-struct
          dd-parse parse-quote parse-id ddk literal-pattern
-         null-terminated? append-pats)
+         null-terminated? append-pats id-pat quote-pat)
+
+(define-syntax-class id-pat
+  #:attributes (pat)
+  (pattern (~datum _)
+           #:attr pat (make-Dummy this-syntax))
+  (pattern i:id
+           #:fail-when (ddk? #'i) "incorrect use of ... in pattern"
+           #:attr pat (make-Var #'i)))
 
 ;; parse x as a match variable
 ;; x : identifier
@@ -45,22 +53,35 @@
          (raise-syntax-error 'match "non-literal in quote pattern" stx #'v))]
     [_ (raise-syntax-error 'match "syntax error in quote pattern" stx)]))
 
+(define-syntax-class quote-pat
+  #:attributes (pat)
+  (pattern ()
+           #:attr pat (make-Null (make-Dummy this-syntax)))
+  [pattern (a:quote-pat . b:quote-pat)
+           #:attr pat (make-Pair (attribute a.pat) (attribute b.pat))]
+  [pattern #(p:quote-pat ...)
+   #:attr pat (make-Vector (attribute p.pat))]
+  [pattern #&p:quote-pat
+   #:attr pat (make-Box (attribute p.pat))]
+  [pattern v:literal-pattern
+   #:attr pat (attribute v.pat)])
+
+
 ;; parse : the parse fn
-;; p : the repeated pattern
+;; p : the parsed repeated pattern
 ;; dd : the ... stx
-;; rest : the syntax for the rest
+;; rest : the pattern for the rest
 (define (dd-parse parse p dd rest #:mutable [mutable? #f])
   (let* ([count (ddk? dd)]
          [min (and (number? count) count)])
     (make-GSeq
-     (parameterize ([match-...-nesting (add1 (match-...-nesting))])
-       (list (list (parse p))))
+     (list (list p))
      (list min)
      ;; no upper bound
      (list #f)
      ;; patterns in p get bound to lists
      (list #f)
-     (parse rest)
+     rest
      mutable?)))
 
 ;; stx : the syntax object for the whole pattern
