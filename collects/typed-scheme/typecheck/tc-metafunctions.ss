@@ -276,7 +276,6 @@
     [(tc-results: ts) (-values ts)]))
 |#
 
-#;
 (define (combine-props new-props old-props)
   (define-values (new-imps new-atoms) (partition ImpFilter? new-props))
   (define-values (derived-imps derived-atoms)
