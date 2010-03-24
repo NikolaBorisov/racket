@@ -236,9 +236,9 @@
 (define (->acc dom rng path)
   (define x (generate-temporary 'x))
   (make-Function (list (make-arr* dom rng 
-                                  #:name (list x)
-                                  #:filters (-FS (list (-not-filter (-val #f) path x)) 
-                                                 (list (-filter (-val #f) path x)))
+                                  #:names (list x)
+                                  #:filters (-FS (-not-filter (-val #f) x path)
+                                                 (-filter (-val #f) x path))
                                   #:object (make-Path path x)))))
 
 (define (cl->* . args)
@@ -275,6 +275,12 @@
      (c:->* (Type/c identifier?) ((listof PathElem?)) Filter/c)
      (make-NotTypeFilter t p i))
 
+(define-syntax-rule (with-names (vars ...) . e)
+  (let-values ([(vars ...) (apply values (generate-temporaries '(vars ...)))])
+    . e))
+
+(define-syntax-rule (asym-pred (var) dom rng filter)
+  (with-names (var) (make-arr* (list dom) rng #:names (list var) #:filters filter)))
 
 (d/c make-pred-ty
   (case-> (c:-> Type/c Type/c)
@@ -284,13 +290,18 @@
   (case-lambda 
     [(in out t n p)
      (define xs (generate-temporaries in))
-     (make-arr* in out #:filters (-FS (list (-filter t p (list-ref xs n))) (list (-not-filter t p (list-ref xs n)))))]
+     (make-Function
+      (list
+       (make-arr* 
+	in out 
+	#:names xs
+	#:filters (-FS (-filter t (list-ref xs n) p) (-not-filter t (list-ref xs n) p)))))]
     [(in out t n)
      (make-pred-ty in out t n null)]
     [(in out t)
-     (make-pred-ty in out t 0)]
+     (make-pred-ty in out t 0 null)]
     [(t) 
-     (make-pred-ty (list Univ) -Boolean t 0)]))
+     (make-pred-ty (list Univ) -Boolean t 0 null)]))
 
 (define true-filter (-FS -top -bot))
 (define false-filter (-FS -bot -top))
