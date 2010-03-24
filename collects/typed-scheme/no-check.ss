@@ -1,12 +1,15 @@
 #lang scheme/base
 
 (require 
- (except-in "private/prims.ss"
+ #;(except-in "private/prims.ss"
             require/typed require/opaque-type require-typed-struct)
  (for-syntax scheme/base syntax/parse syntax/struct))
 (provide (all-from-out scheme/base)
 	 (all-defined-out)
-	 (all-from-out "private/prims.ss"))
+	 #;(all-from-out "private/prims.ss"))
+
+(define-syntax (: stx) #'(begin))
+(define-syntax-rule (define-type-alias . _) (begin))
 
 (define-syntax (require/typed stx)
   (define-syntax-class opt-rename
@@ -46,7 +49,7 @@
   (require (only-in lib pred)))
 
 (define-syntax (require-typed-struct stx)
-  (syntax-parse stx #:literals (:)
+  (syntax-parse stx ;#:literals (:)
     [(_ (~or nm:id (nm:id _:id)) ([fld : ty] ...) lib)
      (with-syntax ([(struct-info maker pred sel ...) (build-struct-names #'nm (syntax->list #'(fld ...)) #f #t)])
        #'(require (only-in lib struct-info maker pred sel ...)))]))

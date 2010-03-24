@@ -31,6 +31,7 @@
 
 ;; print out an effect
 ;; print-effect : Effect Port Boolean -> Void
+#;
 (define (print-latentfilter c port write?)
   (define (fp . args) (apply fprintf port args))
   (match c
@@ -73,6 +74,7 @@
     [(StructPE: t i) (fp "(~a ~a)" t i)]
     [else (fp "(Unknown Path Element: ~a)" (struct->vector c))]))
 
+#;
 (define (print-latentobject c port write?)
   (define (fp . args) (apply fprintf port args))
   (match c
@@ -114,17 +116,17 @@
          (fp "~a ...~a~a " 
              (car drest) (if (special-dots-printing?) "" " ") (cdr drest)))
        (match rng
-         [(Values: (list (Result: t (LFilterSet: (list) (list)) (LEmpty:))))
+         [(Values: (list (Result: t (FilterSet: (Top:) (Top:)) (Empty:))))
           (fp "-> ~a" t)]
          [(Values: (list (Result: t
-				  (LFilterSet: (list (LTypeFilter: ft pth 0))
-					       (list (LNotTypeFilter: ft pth 0)))
-				  (LEmpty:)))) 
+				  (FilterSet: (TypeFilter: ft pth id)
+					      (NotTypeFilter: ft pth id))
+				  (Empty:)))) 
           (if (null? pth)
               (fp "-> ~a : ~a" t ft)
               (begin (fp "-> ~a : ~a @" t ft)
                      (for ([pe pth]) (fp " ~a" pe))))]
-         [(Values: (list (Result: t fs (LEmpty:)))) 
+         [(Values: (list (Result: t fs (Empty:)))) 
           (fp/filter "-> ~a : ~a" t fs)]
          [(Values: (list (Result: t lf lo)))
           (fp/filter "-> ~a : ~a ~a" t lf lo)]
@@ -227,8 +229,8 @@
     [(Syntax: t) (fp "(Syntaxof ~a)" t)]
     [(Instance: t) (fp "(Instance ~a)" t)]
     [(Class: pf nf ms) (fp "(Class)")]
-    [(Result: t (LFilterSet: (list) (list)) (LEmpty:)) (fp "~a" t)]
-    [(Result: t fs (LEmpty:)) (fp "(~a : ~a)" t fs)]
+    [(Result: t (FilterSet: (Top:) (Top:)) (Empty:)) (fp "~a" t)]
+    [(Result: t fs (Empty:)) (fp "(~a : ~a)" t fs)]
     [(Result: t fs lo) (fp "(~a : ~a : ~a)" t fs lo)]
     [(Refinement: parent p? _)
      (fp "(Refinement ~a ~a)" parent (syntax-e p?))]
@@ -238,7 +240,7 @@
 
 (set-box! print-type* print-type)
 (set-box! print-filter* print-filter)
-(set-box! print-latentfilter* print-latentfilter)
+;(set-box! print-latentfilter* print-latentfilter)
 (set-box! print-object* print-object)
-(set-box! print-latentobject* print-latentobject)
+;(set-box! print-latentobject* print-latentobject)
 (set-box! print-pathelem* print-pathelem)

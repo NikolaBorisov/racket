@@ -328,7 +328,7 @@
               [((Result: t f o) (Result: t* f o))
                (subtype* A0 t t*)]
               ;; we can ignore interesting results
-              [((Result: t f o) (Result: t* (LFilterSet: (list) (list)) (LEmpty:)))
+              [((Result: t f o) (Result: t* (FilterSet: (Top:) (Top:)) (Empty:)))
                (subtype* A0 t t*)]
 	      ;; subtyping on other stuff
 	      [((Syntax: t) (Syntax: t*))

@@ -41,7 +41,8 @@
 ;; numeric predicates
 [zero? (make-pred-ty (list N) B -Zero)]
 [number? (make-pred-ty N)]
-[integer? (Univ . -> . B : (-LFS (list (-filter (Un -Integer -Flonum))) (list (-not-filter -Integer))))]
+[integer? (Univ . -> . B : (-FS (-filter (Un -Integer -Flonum))
+				(-not-filter -Integer)))]
 [exact-integer? (make-pred-ty -Integer)]
 [real? (make-pred-ty -Real)]
 [inexact-real? (make-pred-ty -Flonum)]

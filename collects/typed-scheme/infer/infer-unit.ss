@@ -102,8 +102,8 @@
   (match* (t s)
     [(e e) (empty-cset X)]
     ;; FIXME - is there something to be said about LBot?
-    [((LTypeFilter: t p i) (LTypeFilter: s p i)) (cset-meet (cgen V X t s) (cgen V X s t))]
-    [((LNotTypeFilter: t p i) (LNotTypeFilter: s p i)) (cset-meet (cgen V X t s) (cgen V X s t))]
+    [((TypeFilter: t p i) (TypeFilter: s p i)) (cset-meet (cgen V X t s) (cgen V X s t))]
+    [((NotTypeFilter: t p i) (NotTypeFilter: s p i)) (cset-meet (cgen V X t s) (cgen V X s t))]
     [(_ _) (fail! t s)]))
 
 (define (cgen/filters V X ts ss)
@@ -119,14 +119,14 @@
 (define (cgen/filter-set V X t s)
   (match* (t s)
     [(e e) (empty-cset X)]
-    [((LFilterSet: t+ t-) (LFilterSet: s+ s-))
+    [((FilterSet: t+ t-) (FilterSet: s+ s-))
      (cset-meet (cgen/filters V X t+ s+) (cgen/filters V X t- s-))]
     [(_ _) (fail! t s)]))
 
 (define (cgen/object V X t s)
   (match* (t s)
     [(e e) (empty-cset X)]
-    [(e (LEmpty:)) (empty-cset X)]
+    [(e (Empty:)) (empty-cset X)]
     ;; FIXME - do something here    
     [(_ _) (fail! t s)]))
 
