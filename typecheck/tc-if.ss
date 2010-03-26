@@ -44,8 +44,8 @@
      (let*-values ([(flag+ flag-) (values (box #t) (box #t))]
                    [(derived-imps+ derived-atoms+)
                     (combine-props fs+ (env-props (lexical-env)))])
-       (match-let* ([(tc-results: ts fs2 os2) (with-lexical-env (env+ (lexical-env) fs+ flag+) (tc thn (unbox flag+)))]
-                    [(tc-results: us fs3 os3) (with-lexical-env (env+ (lexical-env) fs- flag-) (tc els (unbox flag-)))])
+       (match-let* ([(tc-results: ts fs2 os2) (with-lexical-env (env+ (lexical-env) (list fs+) flag+) (tc thn (unbox flag+)))]
+                    [(tc-results: us fs3 os3) (with-lexical-env (env+ (lexical-env) (list fs-) flag-) (tc els (unbox flag-)))])
          ;; if we have the same number of values in both cases
          (cond [(= (length ts) (length us))
                 (let ([r (combine-results

@@ -113,5 +113,5 @@
    (λ (e) (or (LFilterSet? e)))))
 |#
 
-(define (filter-equal? a b) (= (Rep-seq a) (Rep-seq )))
+(define (filter-equal? a b) (= (Rep-seq a) (Rep-seq b)))
 (provide filter-equal?)

@@ -29,41 +29,18 @@
      ns)
     #f))
 
-;; print out an effect
-;; print-effect : Effect Port Boolean -> Void
-#;
-(define (print-latentfilter c port write?)
-  (define (fp . args) (apply fprintf port args))
-  (match c
-    [(LFilterSet: thn els) (fp "(")
-                           (if (null? thn)
-                               (fp "LTop")
-                               (for ([i thn]) (fp "~a " i)))
-                           (fp "|")
-                           (if (null? els)
-                               (fp "LTop")
-                               (for ([i els]) (fp " ~a" i)))
-                           (fp")")]
-    [(LNotTypeFilter: type path 0) (fp "(! ~a @ ~a)" type path)]
-    [(LTypeFilter: type path 0) (fp "(~a @ ~a)" type path)]
-    [(LNotTypeFilter: type path idx) (fp "(! ~a @ ~a ~a)" type path idx)]
-    [(LTypeFilter: type path idx) (fp "(~a @ ~a ~a)" type path idx)]
-    [(LBot:) (fp "LBot")]
-    [(LImpFilter: a c) (fp "(LImpFilter ~a ~a)" a c)]
-    [else (fp "(Unknown Latent Filter: ~a)" (struct->vector c))]))
-
 (define (print-filter c port write?)
   (define (fp . args) (apply fprintf port args))
   (match c
-    [(FilterSet: thn els) (fp "(")
-                          (for ([i thn]) (fp "~a " i)) (fp "|")
-                          (for ([i els]) (fp " ~a" i))
-                          (fp")")]
+    [(FilterSet: thn els) (fp "(~a | ~a)" thn els)]
     [(NoFilter:) (fp "-")]
     [(NotTypeFilter: type path id) (fp "(! ~a @ ~a ~a)" type path (syntax-e id))]
     [(TypeFilter: type path id) (fp "(~a @ ~a ~a)" type path (syntax-e id))]
     [(Bot:) (fp "Bot")]
+    [(Top:) (fp "Top")]
     [(ImpFilter: a c) (fp "(ImpFilter ~a ~a)" a c)]
+    [(AndFilter: a) (fp "(AndFilter ~a)" a)]
+    [(OrFilter: a) (fp "(OrFilter ~a)" a)]
     [else (fp "(Unknown Filter: ~a)" (struct->vector c))]))
 
 (define (print-pathelem c port write?)
@@ -73,13 +50,6 @@
     [(CdrPE:) (fp "cdr")]
     [(StructPE: t i) (fp "(~a ~a)" t i)]
     [else (fp "(Unknown Path Element: ~a)" (struct->vector c))]))
-
-#;
-(define (print-latentobject c port write?)
-  (define (fp . args) (apply fprintf port args))
-  (match c
-    [(LEmpty:) (fp "")]
-    [(LPath: pes i) (fp "~a" (append pes (list i)))]))
 
 (define (print-object c port write?)
   (define (fp . args) (apply fprintf port args))
