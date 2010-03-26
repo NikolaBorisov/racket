@@ -50,8 +50,17 @@
          (cond [(= (length ts) (length us))
                 (let ([r
                        (combine-results
-                        (for/list ([t ts] [u us] [o2 os2] [o3 os3] [f2 fs2] [f3 fs3])
-                          (combine-filter f1 f2 f3 t u o2 o3)))])
+                        (for/list ([f2 fs2] [f3 fs3] [t2 ts] [t3 us] [o2 os2] [o3 os3])
+                          (let ([filter
+                                 (match* (f2 f3)
+                                         [((FilterSet: f2+ f2-) (FilterSet: f3+ f3-))
+                                          (-FS (make-OrFilter (list (make-AndFilter (list fs+ f2+))
+                                                                    (make-AndFilter (list fs- f3+))))
+                                               (make-OrFilter (list (make-AndFilter (list fs+ f2-))
+                                                                    (make-AndFilter (list fs- f3-)))))])]
+                                [type (Un t2 t3)]
+                                [object (if (object-equal? o2 o3) o2 (make-Empty))])
+                            (ret type filter object))))])
                   (if expected
                       (check-below r expected)
                       r))]

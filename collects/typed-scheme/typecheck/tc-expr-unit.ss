@@ -254,6 +254,7 @@
                     (add-typeof-expr form t)
                     t)]))))
 
+#;
 (define (tc-or e1 e2 or-part [expected #f])
   (match (single-value e1)
     [(tc-result1: t1 (and f1 (FilterSet: fs+ fs-)) o1)
@@ -345,14 +346,7 @@
         [(let-values (((_) meth))
            (let-values (((_ _) (#%plain-app find-method/who _ rcvr _)))
              (#%plain-app _ _ args ...)))
-         (tc/send #'rcvr #'meth #'(args ...) expected)]
-        ;; or
-        [(let-values ([(or-part) e1]) (if op1 op2 e2))
-         (and 
-          (identifier? #'op1) (identifier? #'op2)
-          (free-identifier=? #'or-part #'op1)
-          (free-identifier=? #'or-part #'op2))
-         (tc-or #'e1 #'e2 #'or-part expected)]
+         (tc/send #'rcvr #'meth #'(args ...) expected)]        
         ;; let
         [(let-values ([(name ...) expr] ...) . body)
          (tc/let-values #'((name ...) ...) #'(expr ...) #'body form expected)]
@@ -415,12 +409,6 @@
          (let-values (((_ _) (#%plain-app find-method/who _ rcvr _)))
            (#%plain-app _ _ args ...)))
        (tc/send #'rcvr #'meth #'(args ...))]
-      ;; or
-      [(let-values ([(or-part) e1]) (if op1 op2 e2))
-       (and (identifier? #'op1) (identifier? #'op2)
-            (free-identifier=? #'or-part #'op1)
-            (free-identifier=? #'or-part #'op2))
-       (tc-or #'e1 #'e2 #'or-part)]
       ;; let
       [(let-values ([(name ...) expr] ...) . body)
        (tc/let-values #'((name ...) ...) #'(expr ...) #'body form)]

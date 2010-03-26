@@ -143,11 +143,16 @@
     (match t
       [(Pair: a e) (cons a (tuple-elems e))]
       [(Value: '()) null]))
-  (match c 
+  (match c
+    ;; if we know how it was written, print that
+    [(? Rep-stx a)
+     (fp "~a" (syntax->datum (Rep-stx a)))]
     [(Univ:) (fp "Any")]
     ;; special case number until something better happens
     ;;[(Base: 'Number _) (fp "Number")]
-    [(? has-name?) (fp "~a" (has-name? c))]
+    [(? has-name?) 
+     #;(printf "has a name\n")
+     (fp "~a" (has-name? c))]
     [(StructTop: st) (fp "~a" st)]
     [(BoxTop:) (fp "Box")]
     [(VectorTop:) (fp "Vector")]

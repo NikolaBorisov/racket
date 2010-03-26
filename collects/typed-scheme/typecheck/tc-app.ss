@@ -740,25 +740,25 @@
              [(and rest (< (length t-a) (length dom)))
               (tc-error/expr #:return (ret t-r)
                              "Wrong number of arguments, expected at least ~a and got ~a" (length dom) (length t-a))])
-       (for ([dom-t (if rest (in-sequence-forever dom rest) (in-list dom))] [a (syntax->list args-stx)] [arg-t (in-list t-a)])
+       (for ([dom-t (if rest (in-sequence-forever dom rest) (in-list dom))] 
+             [a (in-list (syntax->list args-stx))]
+             [arg-t (in-list t-a)])
          (parameterize ([current-orig-stx a]) (check-below arg-t dom-t))))
-     (let* (;; Listof[Listof[LFilterSet]]
-            [fs-f (for/list ([f f-r])
-		     (apply-filter f names o-a))]
-            ;; Listof[FilterSet]
-            [f-r (for/list ([lfs lfs-f])
-                   (merge-filter-sets 
-                    (for/list ([lf lfs] [t t-a] [o o-a])
-                      (apply-filter lf t o))))]
-            ;; Listof[Object]
-            [o-r (for/list ([lo lo-r])                     
-                   (match lo
-                     [(LPath: pi* i)
-                      (match (object-index o-a i)
-                        [(Path: pi x) (make-Path (append pi* pi) x)]
-                        [_ (make-Empty)])]
-                     [_ (make-Empty)]))])
-       (ret t-r f-r o-r))]
+     (let-values ([(names o-a)
+                   (for/lists (n o) ([d (in-list dom)]
+                                     [nm (in-list names)]
+                                     [o (in-list o-a)])
+                     (values nm o))])
+       (let* (;; Listof[FilterSet]
+              [f-r (for/list ([f f-r])
+                     (apply-filter f names o-a))]
+              ;; Listof[Object]
+              [o-r (for/list ([o o-r])
+                     (subst-object o names o-a))]
+              ;; Listof[Type]
+              [t-r (for/list ([t t-r])
+                     (subst-type t names o-a))])
+         (ret t-r f-r o-r)))]
     [((arr: _ _ _ drest '()) _)
      (int-err "funapp with drest args NYI")]
     [((arr: _ _ _ _ kws) _)
