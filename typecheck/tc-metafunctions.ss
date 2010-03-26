@@ -239,7 +239,7 @@
 |#
 
 ;; (or/c Values? ValuesDots?) listof[identifier] -> tc-results?
-(d/c (values->tc-results tc formals)
+(d/c (values->tc-results tc)
   ((or/c Values? ValuesDots?) . -> . tc-results?)
   (match tc
     [(ValuesDots: (list (Result: ts fs os) ...) dty dbound)
