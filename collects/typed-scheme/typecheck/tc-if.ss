@@ -54,10 +54,8 @@
                           (let ([filter
                                  (match* (f2 f3)
                                          [((FilterSet: f2+ f2-) (FilterSet: f3+ f3-))
-                                          (-FS (make-OrFilter (list (make-AndFilter (list fs+ f2+))
-                                                                    (make-AndFilter (list fs- f3+))))
-                                               (make-OrFilter (list (make-AndFilter (list fs+ f2-))
-                                                                    (make-AndFilter (list fs- f3-)))))])]
+                                          (-FS (-or (-and fs+ f2+) (-and fs- f3+))
+                                               (-or (-and fs+ f2-) (-and fs- f3-)))])]
                                 [type (Un t2 t3)]
                                 [object (if (object-equal? o2 o3) o2 (make-Empty))])
                             (ret type filter object))))])
