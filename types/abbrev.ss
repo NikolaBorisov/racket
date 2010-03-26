@@ -292,7 +292,7 @@
     . e))
 
 (define-syntax-rule (asym-pred (var) dom rng filter)
-  (with-names (var) (make-arr* (list dom) rng #:names (list var) #:filters filter)))
+  (with-names (var) (make-Function (list (make-arr* (list dom) rng #:names (list var) #:filters filter)))))
 
 (d/c make-pred-ty
   (case-> (c:-> Type/c Type/c)

@@ -2,7 +2,7 @@
 
 (require scheme/contract
          (prefix-in r: "../utils/utils.ss")
-         scheme/match (r:rep filter-rep rep-utils) unstable/struct
+         scheme/match (r:rep filter-rep rep-utils type-rep) unstable/struct
          (except-in (r:utils tc-utils) make-env)
          (r:typecheck tc-metafunctions))
 
@@ -24,7 +24,7 @@
 
 ;; eq? has the type of equal?, and l is an alist (with conses!)
 ;; props is a list of known propositions
-(r:d-s/c env ([eq? (any/c any/c . -> . boolean?)] [l (listof pair?)] [props (listof Filter/c)]) #:transparent)
+(r:d-s/c env ([eq? (any/c any/c . -> . boolean?)] [l (listof (cons/c any/c Type/c))] [props (listof Filter/c)]) #:transparent)
 
 (define (env-vals e)
   (map cdr (env-l e)))
@@ -49,7 +49,7 @@
 ;; the environment for types of ... variables
 (define dotted-env (make-parameter (make-empty-env free-identifier=?)))
 
-(define/contract (env-map f e)
+(r:d/c (env-map f e)
   ((pair? . -> . pair?) env? . -> . env?)
   (make env (env-eq? e) (map f (env-l e)) (env-props e)))
 
@@ -95,4 +95,4 @@
   (syntax-rules ()
     [(_ i t v . b) (parameterize ([dotted-env (extend/values (list i) (list (cons t v)) (dotted-env))]) . b)]))
 
-(provide/contract [make-empty-env ((-> any/c any/c any/c) . -> . env?)])
+(r:p/c [make-empty-env ((-> any/c any/c any/c) . -> . env?)])

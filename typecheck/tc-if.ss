@@ -52,6 +52,10 @@
                           (for/list ([f2 fs2] [f3 fs3] [t2 ts] [t3 us] [o2 os2] [o3 os3])
                             (let ([filter
                                    (match* (f2 f3)
+                                     [((NoFilter:) _)
+                                      (-FS -top -top)]
+                                     [(_ (NoFilter:))
+                                      (-FS -top -top)]
                                      [((FilterSet: f2+ f2-) (FilterSet: f3+ f3-))
                                       (-FS (-or (-and fs+ f2+) (-and fs- f3+))
                                            (-or (-and fs+ f2-) (-and fs- f3-)))])]
