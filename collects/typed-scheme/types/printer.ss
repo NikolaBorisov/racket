@@ -160,7 +160,7 @@
                           (lambda (e) (fp " ") (print-arr e))
                           b)
                          (fp ")")]))]
-    [(arr: _ _ _ _ _) (print-arr c)]
+    [(arr: _ _ _ _ _) (fp "(arr ") (print-arr c) (fp ")")]
     [(Vector: e) (fp "(Vectorof ~a)" e)]
     [(Box: e) (fp "(Boxof ~a)" e)]
     [(Union: elems) (fp "~a" (cons 'U elems))]

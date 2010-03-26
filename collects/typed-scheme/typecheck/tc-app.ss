@@ -728,11 +728,13 @@
 
 ;; syntax? syntax? arr? (listof tc-results?) (or/c #f tc-results) [boolean?] -> tc-results?
 (define (tc/funapp1 f-stx args-stx ftype0 argtys expected #:check [check? #t])
+  ;(printf "got to here 0~a~n" args-stx)
   (match* (ftype0 argtys)
     ;; we check that all kw args are optional
     [((arr: dom (Values: (list (Result: t-r f-r o-r) ...)) rest #f (list (Keyword: _ _ #f) ...)
 	    names)
       (list (tc-result1: t-a phi-a o-a) ...))
+     ;(printf "got to here 1~a~n" args-stx)
      (when check?
        (cond [(and (not rest) (not (= (length dom) (length t-a))))
               (tc-error/expr #:return (ret t-r)
@@ -744,20 +746,22 @@
              [a (in-list (syntax->list args-stx))]
              [arg-t (in-list t-a)])
          (parameterize ([current-orig-stx a]) (check-below arg-t dom-t))))
+     ;(printf "got to here 2 ~a ~a ~a ~n" dom names o-a)
      (let-values ([(names o-a)
                    (for/lists (n o) ([d (in-list dom)]
                                      [nm (in-list names)]
-                                     [o (in-list o-a)])
-                     (values nm o))])
+                                     [oa (in-list o-a)])
+                     (values nm oa))])
+       ;(printf "got to here 3~a~n" args-stx)
        (let* (;; Listof[FilterSet]
               [f-r (for/list ([f f-r])
                      (apply-filter f names o-a))]
               ;; Listof[Object]
               [o-r (for/list ([o o-r])
-                     (subst-object o names o-a #t))]
+                     (apply-object o names o-a))]
               ;; Listof[Type]
               [t-r (for/list ([t t-r])
-                     (subst-type t names o-a #t))])
+                     (apply-type t names o-a))])
          (ret t-r f-r o-r)))]
     [((arr: _ _ _ drest '()) _)
      (int-err "funapp with drest args NYI")]

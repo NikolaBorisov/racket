@@ -9,7 +9,11 @@
          scheme/contract scheme/match unstable/match
          (for-syntax scheme/base))
 
-(provide (all-defined-out))
+;(provide (all-defined-out))
+
+(define-syntax-rule (d/c/p (name . args) c . body)
+  (begin (d/c (name . args) c . body)
+         (p/c [name c])))
 
 ;; this implements the sequence invariant described on the first page relating to Bot
 #;
@@ -26,7 +30,7 @@
           [((Bot:) _) (-FS -bot -top)]
           [(_ _) (-FS l1 l2)]))
 
-(d/c (abstract-filters results)
+(d/c/p (abstract-filters results)
      (tc-results? . -> . (or/c Values? ValuesDots?))     
      (match results
        [(tc-results: ts fs os dty dbound)
@@ -89,26 +93,40 @@
     [(list (FilterSet: f+ f-) ...)
      (make-FilterSet (make-AndFilter f+) (make-AndFilter f-))]))
 
-(d/c (apply-filter fs ids os [polarity #t])
+(d/c/p (apply-filter fs ids os [polarity #t])
   (->* (FilterSet/c (listof identifier?) (listof Object?)) (boolean?) FilterSet/c)
   (match fs
     [(FilterSet: f+ f-)
      (combine (subst-filter* f+ ids os polarity) 
 	      (subst-filter* f- ids os polarity))]))
 
-(d/c (apply-type t ids os [polarity #t])
-  (->* (Type/c (listof identifier?) (listof Object?)) (boolean?) FilterSet/c)
+(d/c/p (apply-type t ids os [polarity #t])
+  (->* (Type/c (listof identifier?) (listof Object?)) (boolean?) Type/c)
   (for/fold ([t t]) ([i (in-list ids)] [o (in-list os)])
     (subst-type t i o polarity)))
 
+(d/c/p (apply-object t ids os [polarity #t])
+  (->* (Object? (listof identifier?) (listof Object?)) (boolean?) Object?)
+  (for/fold ([t t]) ([i (in-list ids)] [o (in-list os)])
+    (subst-object t i o polarity)))
+
 (define (subst-filter* f ids os polarity)
+  (-> Filter/c (listof identifier?) (listof Object?) boolean? Filter/c)
   (for/fold ([f f]) ([i (in-list ids)] [o (in-list os)])
     (subst-filter f i o polarity)))
 
+(d/c/p (subst-filter-set fs id o polarity)
+       (-> FilterSet? identifier? Object? boolean? FilterSet?)
+  (match fs
+    [(FilterSet: f+ f-)
+     (combine (subst-filter f+ id o polarity) 
+	      (subst-filter f- id o polarity))]))
+
 (define (subst-type t id o polarity)
   (define (st t) (subst-type t id o polarity))
+  (d/c (sf fs) (FilterSet? . -> . FilterSet?) (subst-filter-set fs id o polarity))
   (type-case (#:Type st 
-	      #:Filter (lambda (f) (subst-filter f id o polarity))
+	      #:Filter sf
 	      #:Object (lambda (f) (subst-object f id o polarity)))
 	      t))
 
@@ -126,7 +144,7 @@
 	 t)]))
 
 ;; this is the substitution metafunction 
-(d/c (subst-filter f id o polarity)
+(d/c/p (subst-filter f id o polarity)
   (-> Filter/c identifier? Object? boolean? Filter/c)
   (define (ap f) (subst-filter f o polarity))
   (define (tf-matcher t p i id o polarity maker)
@@ -142,7 +160,7 @@
 	     [else f])]))
   (match f
     [(ImpFilter: ant consq)
-     (make-ImpFilter (subst-filter ant o (not polarity)) (ap consq))]
+     (make-ImpFilter (subst-filter ant id o (not polarity)) (ap consq))]
     [(AndFilter: fs) (make-AndFilter (map ap fs))]
     [(OrFilter: fs) (make-OrFilter (map ap fs))]
     [(Bot:) -bot]
@@ -233,7 +251,7 @@
 |#
 
 ;; (or/c Values? ValuesDots?) listof[identifier] -> tc-results?
-(d/c (values->tc-results tc)
+(d/c/p (values->tc-results tc)
   ((or/c Values? ValuesDots?) . -> . tc-results?)
   (match tc
     [(ValuesDots: (list (Result: ts fs os) ...) dty dbound)
@@ -244,6 +262,8 @@
 (define (tc-results->values tc)
   (match tc
     [(tc-results: ts) (-values ts)]))
+
+(provide combine-props tc-results->values subst-object subst-type)
 
 (define (combine-props new-props old-props)
   (values null null)
