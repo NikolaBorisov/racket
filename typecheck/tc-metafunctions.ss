@@ -95,12 +95,21 @@
     [(list (FilterSet: f+ f-) ...)
      (make-FilterSet (make-AndFilter f+) (make-AndFilter f-))]))
 
-(d/c (apply-filter fs id o [polarity #t])
-  (->* (FilterSet/c identifier? Object?) (boolean?) FilterSet/c)
+(d/c (apply-filter fs ids os [polarity #t])
+  (->* (FilterSet/c (listof identifier?) (listof Object?)) (boolean?) FilterSet/c)
   (match fs
     [(FilterSet: f+ f-)
-     (combine (subst-filter f+ id o polarity) 
-	      (subst-filter f- id o polarity))]))
+     (combine (subst-filter* f+ ids os polarity) 
+	      (subst-filter* f- ids os polarity))]))
+
+(d/c (apply-type t ids os [polarity #t])
+  (->* (Type/c (listof identifier?) (listof Object?)) (boolean?) FilterSet/c)
+  (for/fold ([t t]) ([i (in-list ids)] [o (in-list os)])
+    (subst-type t i o polarity)))
+
+(define (subst-filter* f ids os polarity)
+  (for/fold ([f f]) ([i (in-list ids)] [o (in-list os)])
+    (subst-filter f i o polarity)))
 
 (define (subst-type t id o polarity)
   (define (st t) (subst-type t id o polarity))
@@ -227,54 +236,20 @@
     [(_ _ _)
      ;; could intersect f2 and f3 here
      (mk (make-FilterSet null null))]))
+|#
 
 ;; (or/c Values? ValuesDots?) listof[identifier] -> tc-results?
-(define (values->tc-results tc formals)
+(d/c (values->tc-results tc formals)
+  ((or/c Values? ValuesDots?) . -> . tc-results?)
   (match tc
-    [(ValuesDots: (list (Result: ts lfs los) ...) dty dbound)
-     (ret ts
-          (for/list ([lf lfs]) 
-            (or
-             (and (null? formals)
-                  (match lf
-                    [(LFilterSet: lf+ lf-)
-                     (combine (if (memq (make-LBot) lf+) (list (make-Bot)) (list))
-                              (if (memq (make-LBot) lf-) (list (make-Bot)) (list)))]))
-             (merge-filter-sets
-              (for/list ([x formals] [i (in-naturals)])
-                (apply-filter (split-lfilters lf i) Univ (make-Path null x))))))
-          (for/list ([lo los])
-            (or 
-             (for/or ([x formals] [i (in-naturals)])
-               (match lo
-                 [(LEmpty:) #f]
-                 [(LPath: p (== i)) (make-Path p x)]))
-             (make-Empty)))
-          dty dbound)]
-    [(Values: (list (Result: ts lfs los) ...))
-     (ret ts
-          (for/list ([lf lfs]) 
-            (or
-             (and (null? formals)
-                  (match lf
-                    [(LFilterSet: lf+ lf-)
-                     (combine (if (memq (make-LBot) lf+) (list (make-Bot)) (list))
-                              (if (memq (make-LBot) lf-) (list (make-Bot)) (list)))]))
-             (merge-filter-sets
-              (for/list ([x formals] [i (in-naturals)])
-                (apply-filter (split-lfilters lf i) Univ (make-Path null x))))))
-          (for/list ([lo los])
-            (or 
-             (for/or ([x formals] [i (in-naturals)])
-               (match lo
-                 [(LEmpty:) #f]
-                 [(LPath: p (== i)) (make-Path p x)]))
-             (make-Empty))))]))
+    [(ValuesDots: (list (Result: ts fs os) ...) dty dbound)
+     (ret ts fs os dty dbound)]
+    [(Values: (list (Result: ts fs os) ...))
+     (ret ts fs os)]))
 
 (define (tc-results->values tc)
   (match tc
     [(tc-results: ts) (-values ts)]))
-|#
 
 (define (combine-props new-props old-props)
   (define-values (new-imps new-atoms) (partition ImpFilter? new-props))

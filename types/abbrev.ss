@@ -271,6 +271,15 @@
      (c:->* (Type/c identifier?) ((listof PathElem?)) Filter/c)
      (make-TypeFilter t p i))
 
+(define (-filter-at t o)
+  (match o
+    [(Path: p i) (-filter t i p)]
+    [_ -top]))
+(define (-not-filter-at t o)
+  (match o
+    [(Path: p i) (-not-filter t i p)]
+    [_ -top]))
+
 (d/c (-not-filter t i [p null])
      (c:->* (Type/c identifier?) ((listof PathElem?)) Filter/c)
      (make-NotTypeFilter t p i))
