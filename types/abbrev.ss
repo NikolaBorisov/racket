@@ -280,6 +280,9 @@
     [(Path: p i) (-not-filter t i p)]
     [_ -top]))
 
+(define (-or . args) (make-OrFilter args))
+(define (-and . args) (make-AndFilter args))
+
 (d/c (-not-filter t i [p null])
      (c:->* (Type/c identifier?) ((listof PathElem?)) Filter/c)
      (make-NotTypeFilter t p i))
