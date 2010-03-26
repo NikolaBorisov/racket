@@ -26,23 +26,17 @@
           [((Bot:) _) (-FS -bot -top)]
           [(_ _) (-FS l1 l2)]))
 
-(d/c (abstract-filters ids results)
-     ((listof identifier?) tc-results? . -> . (or/c Values? ValuesDots?))
-     #;(define (mk l [drest #f])
-       (if drest (make-ValuesDots l (car drest) (cdr drest)) (make-Values l)))
+(d/c (abstract-filters results)
+     (tc-results? . -> . (or/c Values? ValuesDots?))     
      (match results
        [(tc-results: ts fs os dty dbound)
         (make-ValuesDots 
-         (for/list ([t ts]
-                    [f fs]
-                    [o os])
+         (for/list ([t ts] [f fs] [o os])
            (make-Result t f o))
          dty dbound)]
        [(tc-results: ts fs os)
         (make-Values
-         (for/list ([t ts]
-                    [f fs]
-                    [o os])
+         (for/list ([t ts] [f fs] [o os])
            (make-Result t f o)))]))
 
 #;
@@ -252,6 +246,8 @@
     [(tc-results: ts) (-values ts)]))
 
 (define (combine-props new-props old-props)
+  (values null null)
+  #;#;#;
   (define-values (new-imps new-atoms) (partition ImpFilter? new-props))
   (define-values (derived-imps derived-atoms)
     (for/fold 

@@ -754,10 +754,10 @@
                      (apply-filter f names o-a))]
               ;; Listof[Object]
               [o-r (for/list ([o o-r])
-                     (subst-object o names o-a))]
+                     (subst-object o names o-a #t))]
               ;; Listof[Type]
               [t-r (for/list ([t t-r])
-                     (subst-type t names o-a))])
+                     (subst-type t names o-a #t))])
          (ret t-r f-r o-r)))]
     [((arr: _ _ _ drest '()) _)
      (int-err "funapp with drest args NYI")]

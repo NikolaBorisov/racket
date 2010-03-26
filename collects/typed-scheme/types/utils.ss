@@ -214,7 +214,7 @@
 ;; convenience function for returning the result of typechecking an expression
 (define ret
   (case-lambda [(t)
-                (let ([mk (lambda (t) (make-FilterSet null null))])
+                (let ([mk (lambda (t) (make-FilterSet (make-Top) (make-Top)))])
                   (make-tc-results
                    (cond [(Type? t)
                           (list (make-tc-result t (mk t) (make-Empty)))]

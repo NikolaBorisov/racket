@@ -135,8 +135,8 @@
 (define (tc-id id)
   (let* ([ty (lookup-type/lexical id)])
     (ret ty
-         (make-FilterSet (list (make-NotTypeFilter (-val #f) null id)) 
-                         (list (make-TypeFilter (-val #f) null id)))
+         (make-FilterSet (make-NotTypeFilter (-val #f) null id) 
+                         (make-TypeFilter (-val #f) null id))
          (make-Path null id))))
 
 ;; typecheck an expression, but throw away the effect
@@ -174,7 +174,7 @@
      (if (= (length ts) (length ts2))
          (ret ts2 fs os)
          (ret ts2))]
-    [((tc-result1: t1 f1 o1) (tc-result1: t2 (FilterSet: (list) (list)) (Empty:)))
+    [((tc-result1: t1 f1 o1) (tc-result1: t2 (FilterSet: (Top:) (Top:)) (Empty:)))
      (cond 
        [(not (subtype t1 t2))
         (tc-error/expr "Expected ~a, but got ~a" t2 t1)])
@@ -183,6 +183,9 @@
      (cond 
        [(not (subtype t1 t2))
         (tc-error/expr "Expected ~a, but got ~a" t2 t1)]
+       [(and (not (filter-equal? f1 f2))
+             (object-equal? o1 o2))
+        (tc-error/expr "Expected result with filter ~a, got filter ~a" f2 f1)]
        [(not (and (equal? f1 f2) (equal? o1 o2)))
         (tc-error/expr "Expected result with filter ~a and ~a, got filter ~a and ~a" f2 (print-object o2) f1 (print-object o1))])
      expected]
