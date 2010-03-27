@@ -287,27 +287,44 @@
     [(Path: p i) (-not-filter t i p)]
     [_ -top]))
 
+(define (opposite? f1 f2)
+  (match* (f1 f2)
+          [((TypeFilter: t1 p1 i1)
+            (NotTypeFilter: t2 p1 i2))
+           (and (type-equal? t1 t2)                
+                (free-identifier=? i1 i2))]
+          [((NotTypeFilter: t2 p1 i2)
+            (TypeFilter: t1 p1 i1))
+           (and (type-equal? t1 t2)                
+                (free-identifier=? i1 i2))]
+          [(_ _) #f]))
+
 (define (-or . args) 
   (let loop ([fs args] [result null])
     (if (null? fs)
-        (cond [(null? result)
-               (make-Bot)]
-              [(null? (cdr result)) (car result)]
-              [else (make-OrFilter result)])
+        (match result
+          [(list) -bot]
+          [(list f) f]
+          [(list f1 f2) (opposite? f1 f2) -top]
+          [_ (make-OrFilter result)])
         (match (car fs)
           [(and t (Top:)) t]
+          [(OrFilter: fs*) (loop (cdr fs) (append fs* result))]
           [(Bot:) (loop (cdr fs) result)]
           [t (loop (cdr fs) (cons t result))]))))
 
 (define (-and . args) 
   (let loop ([fs args] [result null])
     (if (null? fs)
-        (cond [(null? result)
-               (make-Top)]
-              [(null? (cdr result)) (car result)]
-              [else (make-AndFilter result)])
+        (match result
+          [(list) -top]
+          [(list f) f]
+          ;; don't think this is useful here
+          #;[(list f1 f2) (opposite? f1 f2) -bot]
+          [_ (make-AndFilter result)])
         (match (car fs)
           [(and t (Bot:)) t]
+          [(AndFilter: fs*) (loop (cdr fs) (append fs* result))]
           [(Top:) (loop (cdr fs) result)]
           [t (loop (cdr fs) (cons t result))]))))
 
