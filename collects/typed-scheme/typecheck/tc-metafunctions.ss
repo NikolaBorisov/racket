@@ -266,9 +266,10 @@
 (provide combine-props tc-results->values subst-object subst-type)
 
 (define (combine-props new-props old-props)
-  (values null null)
-  #;#;#;
-  (define-values (new-imps new-atoms) (partition ImpFilter? new-props))
+  (define-values (new-atoms new-formulas) 
+    (partition (lambda (e) (or (TypeFilter? e) (NotTypeFilter? e))) new-props))
+  (values new-formulas new-atoms)
+  #;#;
   (define-values (derived-imps derived-atoms)
     (for/fold 
         ([derived-imps null]

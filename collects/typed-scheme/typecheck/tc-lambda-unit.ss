@@ -14,7 +14,8 @@
          (types abbrev utils)
 	 (env type-environments lexical-env)
 	 (utils tc-utils)
-         mzlib/plt-match)
+         unstable/debug
+         scheme/match)
 (require (for-template scheme/base "internal-forms.ss"))
 
 (import tc-expr^)
@@ -284,7 +285,7 @@
             [(tc-result1: t) (or (Poly? t) (PolyDots? t))]
             [_ #f]))
       (ret (tc/plambda form formals bodies expected) true-filter)
-      (ret (tc/mono-lambda/type formals bodies expected) true-filter)))
+      (ret (debug tc/mono-lambda/type formals bodies expected) true-filter)))
 
 ;; tc/lambda : syntax syntax-list syntax-list -> tc-result
 (define (tc/lambda form formals bodies)
