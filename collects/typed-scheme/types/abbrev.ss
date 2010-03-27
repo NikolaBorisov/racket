@@ -27,7 +27,6 @@
 (define -Param make-Param)
 (define -box make-Box)
 (define -vec make-Vector)
-(define-syntax -FS (make-rename-transformer #'make-FilterSet))
 
 (define-syntax *Un
   (syntax-rules ()
@@ -119,6 +118,14 @@
 (define -bot (make-Bot))
 (define -no-filter (make-FilterSet -top -top))
 (define -no-obj (make-Empty))
+
+
+(d/c (-FS + -)
+     (c:-> Filter/c Filter/c FilterSet?)
+     (match* (+ -)
+             [((Bot:) _) (make-FilterSet -bot -top)]
+             [(_ (Bot:)) (make-FilterSet -top -bot)]
+             [(+ -) (make-FilterSet + -)]))
 
 (define -car (make-CarPE))
 (define -cdr (make-CdrPE))
@@ -280,8 +287,29 @@
     [(Path: p i) (-not-filter t i p)]
     [_ -top]))
 
-(define (-or . args) (make-OrFilter args))
-(define (-and . args) (make-AndFilter args))
+(define (-or . args) 
+  (let loop ([fs args] [result null])
+    (if (null? fs)
+        (cond [(null? result)
+               (make-Bot)]
+              [(null? (cdr result)) (car result)]
+              [else (make-OrFilter result)])
+        (match (car fs)
+          [(and t (Top:)) t]
+          [(Bot:) (loop (cdr fs) result)]
+          [t (loop (cdr fs) (cons t result))]))))
+
+(define (-and . args) 
+  (let loop ([fs args] [result null])
+    (if (null? fs)
+        (cond [(null? result)
+               (make-Top)]
+              [(null? (cdr result)) (car result)]
+              [else (make-AndFilter result)])
+        (match (car fs)
+          [(and t (Bot:)) t]
+          [(Top:) (loop (cdr fs) result)]
+          [t (loop (cdr fs) (cons t result))]))))
 
 (d/c (-not-filter t i [p null])
      (c:->* (Type/c identifier?) ((listof PathElem?)) Filter/c)
