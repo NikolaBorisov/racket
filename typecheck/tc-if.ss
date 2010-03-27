@@ -61,7 +61,7 @@
                                            (-or (-and fs+ f2-) (-and fs- f3-)))])]
                                   [type (Un t2 t3)]
                                   [object (if (object-equal? o2 o3) o2 (make-Empty))])
-                              (printf "result filter is: ~a\n" filter)
+                              ;(printf "result filter is: ~a\n" filter)
                               (ret type filter object))))])
                   (if expected (check-below r expected) r))]
                ;; special case if one of the branches is unreachable

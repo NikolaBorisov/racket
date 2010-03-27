@@ -34,13 +34,15 @@
   (match c
     [(FilterSet: thn els) (fp "(~a | ~a)" thn els)]
     [(NoFilter:) (fp "-")]
+    [(NotTypeFilter: type (list) id) (fp "(! ~a @ ~a)" type (syntax-e id))]
     [(NotTypeFilter: type path id) (fp "(! ~a @ ~a ~a)" type path (syntax-e id))]
+    [(TypeFilter: type (list) id) (fp "(~a @ ~a)" type (syntax-e id))]
     [(TypeFilter: type path id) (fp "(~a @ ~a ~a)" type path (syntax-e id))]
     [(Bot:) (fp "Bot")]
     [(Top:) (fp "Top")]
     [(ImpFilter: a c) (fp "(ImpFilter ~a ~a)" a c)]
-    [(AndFilter: a) (fp "(AndFilter ~a)" a)]
-    [(OrFilter: a) (fp "(OrFilter ~a)" a)]
+    [(AndFilter: a) (fp "(AndFilter") (for ([a0 a]) (fp " ~a" a0))  (fp ")")]
+    [(OrFilter: a) (fp "(OrFilter") (for ([a0 a]) (fp " ~a" a0)) (fp ")")]
     [else (fp "(Unknown Filter: ~a)" (struct->vector c))]))
 
 (define (print-pathelem c port write?)
