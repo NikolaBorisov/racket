@@ -597,7 +597,7 @@
                                            (= (length d) 
                                               (length (syntax->list #'args))))
                                          dom)
-                                      (Values: (list (Result: v (FilterSet: '() '()) (Empty:))))
+                                      (Values: (list (Result: v (FilterSet: (Top:) (Top:)) (Empty:))))
                                       #f #f (list (Keyword: _ _ #f) ...)))))))
           ;(printf "f dom: ~a ~a~n" (syntax->datum #'f) dom)
           (let ([arg-tys (map (lambda (a t) (tc-expr/check a (ret t))) 

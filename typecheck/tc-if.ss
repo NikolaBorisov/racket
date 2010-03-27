@@ -11,7 +11,7 @@
 	 (utils tc-utils)
          (typecheck tc-envops tc-metafunctions)
          syntax/kerncase
-         mzlib/trace
+         mzlib/trace unstable/debug
          scheme/match)
 
 ;; if typechecking   
@@ -43,7 +43,7 @@
     [(tc-result1: _ (and f1 (FilterSet: fs+ fs-)) _)
      (let*-values ([(flag+ flag-) (values (box #t) (box #t))]
                    [(derived-imps+ derived-atoms+)
-                    (combine-props fs+ (env-props (lexical-env)))])
+                    (combine-props (list fs+) (env-props (lexical-env)))])
        (match-let* ([(tc-results: ts fs2 os2) (with-lexical-env (env+ (lexical-env) (list fs+) flag+) (tc thn (unbox flag+)))]
                     [(tc-results: us fs3 os3) (with-lexical-env (env+ (lexical-env) (list fs-) flag-) (tc els (unbox flag-)))])
          ;; if we have the same number of values in both cases
