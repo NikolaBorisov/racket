@@ -164,20 +164,19 @@
          (cond 
            [(assf (λ (t) (type-equal? t ty)) structs-seen)
             =>
-            (lambda (pr)
-              (cdr pr))]
+            cdr]
            [proc (exit (fail))]
-               [poly? 
-                (with-syntax* ([(x rec) (generate-temporaries '(x rec))]
-                               [(fld-cnts ...)
-                                (for/list ([fty flds]
-                                           [f-acc acc-ids])
-                                  #`(#,(t->c fty #:seen (cons (cons ty #'rec) structs-seen))
-                                     (#,f-acc x)))])
-                              #`(flat-rec-contract 
-                                 rec
-                                 '#,(syntax-e pred?)
-                                 (lambda (x) (and fld-cnts ...))))]
+           [poly? 
+            (with-syntax* ([(x rec) (generate-temporaries '(x rec))]
+                           [(fld-cnts ...)
+                            (for/list ([fty flds]
+                                       [f-acc acc-ids])
+                              #`(#,(t->c fty #:seen (cons (cons ty #'rec) structs-seen))
+                                 (#,f-acc x)))])
+              #`(flat-rec-contract 
+                 rec
+                 '#,(syntax-e pred?)
+                 (lambda (x) (and fld-cnts ...))))]
                [else #`(flat-named-contract '#,(syntax-e pred?) #,(cert pred?))])]
         [(Syntax: (Base: 'Symbol _)) #'identifier?]
         [(Syntax: t) #`(syntax/c #,(t->c t))]
