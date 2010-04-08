@@ -9,7 +9,7 @@
          scheme/match         
          scheme/promise
          scheme/flonum
-         unstable/syntax
+         unstable/syntax unstable/struct
          (prefix-in c: scheme/contract)
          (for-syntax scheme/base syntax/parse)
 	 (for-template scheme/base scheme/contract scheme/promise scheme/tcp scheme/flonum))
@@ -76,7 +76,7 @@
 (define make-promise-ty
   (let ([s (string->uninterned-symbol "Promise")])
     (lambda (t)
-      (make-Struct s #f (list t) #f #f #'promise? values (list #'values)))))
+      (make-Struct s #f (list t) #f #f #'promise? values (list #'values) #'values))))
 
 (define -Listof (-poly (list-elem) (make-Listof list-elem)))
 
@@ -271,8 +271,8 @@
 (define (make-arr-dots dom rng dty dbound)
   (make-arr* dom rng #:drest (cons dty dbound)))
 
-(define (-struct name parent flds accs [proc #f] [poly #f] [pred #'dummy] [cert values])
-  (make-Struct name parent flds proc poly pred cert accs))
+(define (-struct name parent flds accs constructor [proc #f] [poly #f] [pred #'dummy] [cert values])
+  (make-Struct name parent flds proc poly pred cert accs constructor))
 
 (d/c (-filter t i [p null])
      (c:->* (Type/c identifier?) ((listof PathElem?)) Filter/c)
