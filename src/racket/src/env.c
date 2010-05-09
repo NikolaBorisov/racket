@@ -356,9 +356,6 @@ Scheme_Env *scheme_engine_instance_init() {
   scheme_init_foreign_globals();
 #endif
   scheme_init_salloc();
-#ifdef MZ_USE_JIT
-  scheme_init_jit();
-#endif
   make_kernel_env();
 
 #if defined(MZ_PRECISE_GC) && defined(MZ_USE_PLACES)
@@ -479,6 +476,10 @@ static Scheme_Env *place_instance_init(void *stack_base, int initial_main_os_thr
   printf("process @ %ld\n", scheme_get_process_milliseconds());
 #endif
 
+#ifdef MZ_USE_JIT
+  scheme_init_jit();
+#endif
+
   /* error handling and buffers */
   /* this check prevents initializing orig ports twice for the first initial
    * place.  The kernel initializes orig_ports early. */
@@ -496,6 +497,7 @@ static Scheme_Env *place_instance_init(void *stack_base, int initial_main_os_thr
   scheme_init_gmp_places();
   scheme_alloc_global_fdset();
   scheme_init_file_places();
+  scheme_init_foreign_places();
 
   env = scheme_make_empty_env();
   scheme_set_param(scheme_current_config(), MZCONFIG_ENV, (Scheme_Object *)env); 
@@ -567,6 +569,9 @@ void scheme_place_instance_destroy() {
 #if defined(MZ_USE_PLACES)
   scheme_kill_green_thread_timer();
 #endif
+#if defined(MZ_PRECISE_GC) && defined(MZ_USE_PLACES)
+  GC_destruct_child_gc();
+#endif
 }
 
 static void make_kernel_env(void)
@@ -636,6 +641,7 @@ static void make_kernel_env(void)
   MZTIMEIT(regexp, scheme_regexp_initialize(env));
 #endif
   MZTIMEIT(params, scheme_init_parameterization());
+  MZTIMEIT(futures, scheme_init_futures_once());
   MZTIMEIT(places, scheme_init_places_once());
 
   MARK_START_TIME();

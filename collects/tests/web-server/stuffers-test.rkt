@@ -1,10 +1,10 @@
-#lang scheme
-(require schemeunit
+#lang racket
+(require racunit
          web-server/stuffers
          web-server/private/servlet
          web-server/http
          net/url
-         scheme/serialize)
+         racket/serialize)
 (provide all-stuffers-tests)
 
 (define (stuffer-test s)
@@ -127,6 +127,6 @@
                              (check-not-false (is-url-too-big? (make-bytes 3000 65)))))))))
 
 #|
-(require (planet schematics/schemeunit:3/text-ui))
+(require (planet schematics/racunit:3/text-ui))
 (run-tests all-stuffers-tests)
 |#

@@ -1,6 +1,6 @@
 #lang scheme/base
 
-(require schemeunit/text-ui)
+(require racunit/text-ui)
 (require tests/deinprogramm/contract)
 
 (run-tests all-contract-tests)

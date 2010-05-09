@@ -216,7 +216,7 @@
  => '(#"1 test passed\n" #"2 tests passed\n")
  )
 
-;; SchemeUnit stuff
+;; RacUnit stuff
 ;; (examples that should fail modified to ones that shouldn't)
 #|
 

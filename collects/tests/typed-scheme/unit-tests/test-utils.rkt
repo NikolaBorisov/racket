@@ -7,7 +7,7 @@
 	 typed-scheme/utils/utils
          (for-syntax scheme/base)
          (types comparison utils) 
-         schemeunit schemeunit/text-ui)
+         racunit racunit/text-ui)
 
 (provide private typecheck (rename-out [infer r:infer]) utils env rep types)
 
@@ -20,7 +20,7 @@
   (run-tests (mk-suite ts)))
 
 (define (test/gui suite) 
-  (((dynamic-require 'schemeunit/private/gui/gui 'make-gui-runner))
+  (((dynamic-require 'racunit/private/gui/gui 'make-gui-runner))
    suite))
 
 (define (run/gui . ts)
@@ -47,8 +47,9 @@
   (syntax-case stx ()
     [(_ nm a b)
      (syntax/loc stx (test-check nm type-equal? a b))]))
+(define-binary-check (check-tc-result-equal?* tc-result-equal/test? a b))
 (define-syntax (check-tc-result-equal? stx)
   (syntax-case stx ()
     [(_ nm a b)
-     (syntax/loc stx (test-check nm tc-result-equal/test? a b))]))
+     (syntax/loc stx (test-case nm (check-tc-result-equal?* a b)))]))
 

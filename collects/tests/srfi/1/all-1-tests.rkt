@@ -1,6 +1,6 @@
 (module all-1-tests mzscheme
   
-  (require schemeunit)
+  (require racunit)
   (require "alist-test.ss"
            "cons-test.ss"
            "delete-test.ss"

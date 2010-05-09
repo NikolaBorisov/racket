@@ -34,7 +34,7 @@
 
 (module predicate-test
   mzscheme
-  (require schemeunit)
+  (require racunit)
   (require srfi/1/predicate
    srfi/1/cons)
 

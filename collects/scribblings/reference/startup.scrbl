@@ -134,7 +134,9 @@ flags:
         the evaluation are printed via @racket[current-print].}
 
   @item{@FlagFirst{f} @nonterm{file} or @DFlagFirst{load}
-        @nonterm{file} : @racket[load]s @nonterm{file}.}
+        @nonterm{file} : @racket[load]s @nonterm{file}; if
+        @nonterm{file} is @filepath{-}, then expressions are read and
+        evaluated from standard input.}
 
   @item{@FlagFirst{t} @nonterm{file} or @DFlagFirst{require}
         @nonterm{file} : @racket[require]s @nonterm{file}.}
@@ -402,7 +404,7 @@ language specifies run-time configuration by
 A @racket['configure-runtime] query returns a list of vectors, instead
 of directly configuring the environment, so that the indicated modules
 to be bundled with a program when creating a stand-alone
-executable; see @secref[#:doc '(lib "scribblings/mzc/mzc.scrbl") "exe"].
+executable; see @secref[#:doc '(lib "scribblings/raco/raco.scrbl") "exe"].
 
 For information on defining a new @hash-lang[] language, see
 @racketmodname[syntax/module-reader].

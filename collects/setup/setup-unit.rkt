@@ -28,15 +28,20 @@
 
 (define-namespace-anchor anchor)
 
-;; read info files without compiling them
+;; read info files using whatever namespace, .zo-use, and compilation
+;;  configuration was in place for loading setup, instead of whatever
+;;  is in place for the collections that setup is processing:
 (define getinfo
   (let ([ns (namespace-anchor->empty-namespace anchor)]
-        [compile (current-compile)])
+        [compile (current-compile)]
+        [loader (current-load/use-compiled)]
+        [paths (use-compiled-file-paths)])
     (lambda (path)
       (parameterize ([current-namespace ns]
                      [current-compile compile]
-                     [use-compiled-file-paths '()])
-        (get-info/full path)))))
+                     [current-load/use-compiled loader]
+                     [use-compiled-file-paths paths])
+        (get-info/full path #:namespace ns)))))
 
 (provide setup@)
 
@@ -548,7 +553,9 @@
     (let ([dir (cc-path cc)]
           [info (cc-info cc)])
       (clean-cc dir info)
-      (compile-directory-zos dir info #:skip-path compile-skip-directory #:skip-doc-sources? (not (make-docs)))))
+      (compile-directory-zos dir info 
+                             #:skip-path compile-skip-directory 
+                             #:skip-doc-sources? (not (make-docs)))))
 
   (define-syntax-rule (with-specified-mode body ...)
     (let ([thunk (lambda () body ...)])
@@ -586,15 +593,18 @@
   (define (make-zo-step)
     (setup-printf #f "--- compiling collections ---")
     (with-specified-mode
-      (let ([gc? #f])
+      (let ([gcs 0])
         (for ([cc ccs-to-compile])
           (parameterize ([current-namespace (make-base-empty-namespace)])
             (begin-record-error cc "making"
               (setup-printf "making" "~a" (cc-name cc))
               (control-io
-                (lambda (p where) (set! gc? #t) (setup-fprintf p #f " in ~a" (path->name (path->complete-path where (cc-path cc)))))
+                (lambda (p where) 
+                  (set! gcs 2) 
+                  (setup-fprintf p #f " in ~a" (path->name (path->complete-path where (cc-path cc)))))
                 (compile-cc cc))))
-          (when gc?
+          (unless (zero? gcs)
+            (set! gcs (sub1 gcs))
             (collect-garbage))))))
     
 
@@ -724,7 +734,7 @@
                                      (archive-implies-reindex)))))
 
   (define (doc-pdf-dest-step)
-    (setup-printf #f "building PDF documentation (via pdflatex)")
+    (setup-printf #f "--- building PDF documentation (via pdflatex) ---")
     (let ([dest-dir (path->complete-path (doc-pdf-dest))])
       (unless (directory-exists? dest-dir)
         (make-directory dest-dir))

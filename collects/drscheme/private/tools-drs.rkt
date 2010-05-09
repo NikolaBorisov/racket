@@ -19,7 +19,8 @@ This file sets up the right lexical environment to invoke the tools that want to
          mrlib/switchable-button
          string-constants)
 
-(require (for-syntax racket/base racket/match))
+(require (for-syntax racket/base racket/match
+                     compiler/cm-accomplice))
 
 (import [prefix drscheme:frame: drracket:frame^]
         [prefix drscheme:unit: drracket:unit^]
@@ -41,12 +42,15 @@ This file sets up the right lexical environment to invoke the tools that want to
   (syntax-case stx ()
     [(_ body tool-name)
      (let ()
+       (define tool-lib-src (build-path (collection-path "drscheme") "tool-lib.rkt"))
        (define full-sexp
-         (call-with-input-file (build-path (collection-path "drscheme") "tool-lib.rkt")
+         (call-with-input-file tool-lib-src
            (λ (port)
              (parameterize ([read-accept-reader #t])
                (read port)))))
        
+       (register-external-file tool-lib-src)
+
        (let loop ([sexp full-sexp])
          (match sexp
            [`((#%module-begin ,body ...))
@@ -80,8 +84,8 @@ This file sets up the right lexical environment to invoke the tools that want to
 
 ;; these two definitions are a hack. They give bindings for the drracket: based names that
 ;; appear in the source of language-object-contract.rkt.
-(define drracket:language:capability-registered? drscheme:language:capability-registered?)
-(define drracket:language:get-capability-contract drscheme:language:get-capability-contract)
+(define (drracket:language:capability-registered? . args) (apply drscheme:language:capability-registered? args))
+(define (drracket:language:get-capability-contract . args) (apply drscheme:language:get-capability-contract args))
 
 ;; invoke-drs-tool : unit/sig string -> (values (-> void) (-> void))
 ;; invokes the tools and returns the two phase thunks.

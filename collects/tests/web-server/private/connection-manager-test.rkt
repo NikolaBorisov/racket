@@ -1,5 +1,5 @@
-#lang scheme/base
-(require schemeunit
+#lang racket/base
+(require racunit
          web-server/private/connection-manager)
 (provide connection-manager-tests)
 

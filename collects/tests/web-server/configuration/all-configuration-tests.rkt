@@ -1,6 +1,6 @@
-#lang scheme/base
-(require schemeunit
-         "configuration-table-test.ss")
+#lang racket/base
+(require racunit
+         "configuration-table-test.rkt")
 (provide all-configuration-tests)
 
 (define all-configuration-tests  

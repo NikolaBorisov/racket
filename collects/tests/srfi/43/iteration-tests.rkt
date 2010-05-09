@@ -1,6 +1,6 @@
 (module iteration-tests mzscheme
   
-  (require schemeunit)
+  (require racunit)
   (require srfi/43/vector-lib)
   
   (provide iteration-tests)

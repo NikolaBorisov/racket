@@ -1,5 +1,5 @@
-#lang scheme
-(require schemeunit
+#lang racket
+(require racunit
          web-server/http
          net/url)
 (provide basic-auth-tests)

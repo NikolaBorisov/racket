@@ -1,5 +1,5 @@
-#lang scheme/base
-(require schemeunit
+#lang racket/base
+(require racunit
          web-server/lang/labels)
 (provide labels-tests)
 

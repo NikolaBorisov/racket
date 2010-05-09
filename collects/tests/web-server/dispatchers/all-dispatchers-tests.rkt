@@ -1,11 +1,11 @@
-#lang scheme/base
-(require schemeunit
-         "dispatch-passwords-test.ss"
-         "dispatch-files-test.ss"        
-         "dispatch-servlets-test.ss"
-         "dispatch-lang-test.ss"         
-         "dispatch-host-test.ss"
-         "filesystem-map-test.ss")
+#lang racket/base
+(require racunit
+         "dispatch-passwords-test.rkt"
+         "dispatch-files-test.rkt"        
+         "dispatch-servlets-test.rkt"
+         "dispatch-lang-test.rkt"         
+         "dispatch-host-test.rkt"
+         "filesystem-map-test.rkt")
 (provide all-dispatchers-tests)
 
 (define all-dispatchers-tests  

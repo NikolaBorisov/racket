@@ -1,5 +1,5 @@
-#lang scheme/base
-(require schemeunit
+#lang racket/base
+(require racunit
          web-server/private/cache-table)
 (provide cache-table-tests)
 
@@ -37,6 +37,6 @@
                    (cache-table-lookup! ct 'foo (lambda () #f)))))))
 
 #|
-(require (planet schematics/schemeunit:3/text-ui))
+(require (planet schematics/racunit:3/text-ui))
 (run-tests cache-table-tests)
 |#

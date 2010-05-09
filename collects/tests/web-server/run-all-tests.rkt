@@ -1,5 +1,5 @@
-#lang scheme/base
-(require schemeunit/text-ui
-         "all-web-server-tests.ss")
+#lang racket/base
+(require racunit/text-ui
+         "all-web-server-tests.rkt")
 
 (run-tests all-web-server-tests)

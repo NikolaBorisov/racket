@@ -34,7 +34,7 @@
 
 (module lset-test
   mzscheme
-  (require schemeunit)
+  (require racunit)
   (require srfi/1/lset)
 
   (provide lset-tests)

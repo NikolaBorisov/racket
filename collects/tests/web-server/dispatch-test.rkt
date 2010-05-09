@@ -1,9 +1,9 @@
-#lang scheme
-(require schemeunit
+#lang racket
+(require racunit
          web-server/http
          web-server/dispatchers/dispatch
          net/url
-         scheme/stxparam
+         racket/stxparam
          web-server/dispatch/coercion
          web-server/dispatch/bidi-match
          web-server/dispatch/http-expanders
@@ -458,5 +458,5 @@
 
 #;(test-serve/dispatch)
 
-(require schemeunit/text-ui)
+(require racunit/text-ui)
 (run-tests all-dispatch-tests)

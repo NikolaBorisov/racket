@@ -1,9 +1,9 @@
-#lang scheme/base
-(require schemeunit
-         "bindings-test.ss"
-         "basic-auth-test.ss"
-         "helpers-test.ss"
-         "web-test.ss")
+#lang racket/base
+(require racunit
+         "bindings-test.rkt"
+         "basic-auth-test.rkt"
+         "helpers-test.rkt"
+         "web-test.rkt")
 (provide all-servlet-tests)
 
 (define all-servlet-tests

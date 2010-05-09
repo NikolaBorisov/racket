@@ -1,5 +1,5 @@
 (module all-srfi-40-tests mzscheme
-  (require schemeunit)
+  (require racunit)
   (require srfi/40)
   (provide all-srfi-40-tests)
   

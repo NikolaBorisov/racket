@@ -1,5 +1,5 @@
 #lang scheme
-(require "test-utils.ss" schemeunit)
+(require "test-utils.ss" racunit)
 
 (provide module-tests)
 

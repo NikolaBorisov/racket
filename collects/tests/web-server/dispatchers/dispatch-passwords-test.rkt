@@ -1,15 +1,15 @@
-#lang scheme/base
-(require schemeunit
+#lang racket/base
+(require racunit
          (only-in mzlib/file
                   make-temporary-file)
          net/url
-         scheme/promise
-         scheme/list
-         scheme/serialize
+         racket/promise
+         racket/list
+         racket/serialize
          web-server/http
          web-server/dispatchers/dispatch
          (prefix-in passwords: web-server/dispatchers/dispatch-passwords)
-         "../util.ss")
+         "../util.rkt")
 (provide dispatch-passwords-tests)
 
 (require/expose web-server/dispatchers/dispatch-passwords

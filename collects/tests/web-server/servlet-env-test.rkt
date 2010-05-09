@@ -1,5 +1,5 @@
-#lang scheme/base
-(require schemeunit
+#lang racket/base
+(require racunit
          mzlib/etc
          mzlib/list
          mzlib/pretty

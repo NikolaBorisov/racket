@@ -13,7 +13,8 @@
          mrlib/switchable-button
 string-constants)
 
-(require (for-syntax racket/base racket/match))
+(require (for-syntax racket/base racket/match
+                     compiler/cm-accomplice))
 
 (import [prefix drracket:frame: drracket:frame^]
         [prefix drracket:unit: drracket:unit^]
@@ -176,12 +177,12 @@ string-constants)
 
 ;; default-tool-configuration : installed-tool -> (union 'load 'skip)
 (define (default-tool-configuration it)
-  (preferences:get 'drscheme:default-tools-configuration))
+  (preferences:get 'drracket:default-tools-configuration))
 
 (define toolspref
   (case-lambda
-    [() (preferences:get 'drscheme:tools-configuration)]
-    [(v) (preferences:set 'drscheme:tools-configuration v)]))
+    [() (preferences:get 'drracket:tools-configuration)]
+    [(v) (preferences:set 'drracket:tools-configuration v)]))
 
 (define (installed-tool->key it)
   (list (directory-record-spec (installed-tool-dir it))
@@ -322,11 +323,15 @@ string-constants)
   (syntax-case stx ()
     [(_ body tool-name)
      (let ()
+       (define tool-lib-src (build-path (collection-path "drscheme") "tool-lib.rkt"))
+       
        (define full-sexp
-         (call-with-input-file (build-path (collection-path "drscheme") "tool-lib.rkt")
+         (call-with-input-file tool-lib-src
            (λ (port)
              (parameterize ([read-accept-reader #t])
                (read port)))))
+
+       (register-external-file tool-lib-src)
        
        (let loop ([sexp full-sexp])
          (match sexp

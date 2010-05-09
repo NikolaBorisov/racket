@@ -1,8 +1,8 @@
-#lang scheme
-(require schemeunit
-         schemeunit/text-ui
+#lang racket
+(require racunit
+         racunit/text-ui
          xml
-         scheme/runtime-path)
+         racket/runtime-path)
 
 (define (validate-xml? xml)
   (error 'validate-xml? "Not implemented"))

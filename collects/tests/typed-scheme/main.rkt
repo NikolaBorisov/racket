@@ -2,7 +2,7 @@
 
 (provide go go/text)
 
-(require schemeunit schemeunit/text-ui
+(require racunit racunit/text-ui
          mzlib/etc scheme/port
          compiler/compiler
          scheme/match
@@ -10,7 +10,7 @@
          "unit-tests/test-utils.ss")
 
 (define (scheme-file? s)
-  (regexp-match ".*[.](ss|scm)" (path->string s)))
+  (regexp-match ".*[.](rkt|ss|scm)" (path->string s)))
 
 (define-namespace-anchor a)
 
@@ -86,8 +86,8 @@
   (test-suite "Typed Scheme Tests"
               unit-tests int-tests))
 
-(define (go) (test/gui tests))
-(define (go/text) (run-tests tests 'verbose))
+(define (go [unit? #f]) (test/gui (if unit? unit-tests tests)))
+(define (go/text [unit? #f]) (run-tests (if unit? unit-tests tests) 'verbose))
 
 (provide go go/text)
 

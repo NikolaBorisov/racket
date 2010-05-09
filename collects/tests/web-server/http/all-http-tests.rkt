@@ -1,7 +1,7 @@
-#lang scheme/base
-(require schemeunit
-         "cookies-test.ss"
-         "digest-auth-test.ss")
+#lang racket/base
+(require racunit
+         "cookies-test.rkt"
+         "digest-auth-test.rkt")
 (provide all-http-tests)
 
 (define all-http-tests

@@ -1,5 +1,5 @@
-#lang scheme/base
-(require schemeunit
+#lang racket/base
+(require racunit
          web-server/lang/defun
          web-server/lang/util)
 (provide defun-tests)
@@ -18,8 +18,8 @@
    ; XXX Doesn't work for non-exp values
    #;(test-not-exn "define-struct" (lambda () (vwrap (defun (expand (syntax (define-struct posn (x y))))))))
    (test-not-exn "quote-syntax" (lambda () (vwrap (defun (expand (syntax #'provide/contract-id-set-a-date-day!))))))
-   #;(test-not-exn "provide/contract" (lambda () (vwrap (defun (expand (syntax (module t mzscheme
-                                                                                 (require mzlib/contract)
+   #;(test-not-exn "provide/contract" (lambda () (vwrap (defun (expand (syntax (module t racket
+                                                                                 (require racket/contract)
                                                                                  (define x 1)
                                                                                  (provide/contract
                                                                                   [x integer?]))))))))

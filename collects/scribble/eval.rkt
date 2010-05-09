@@ -7,7 +7,7 @@
            racket/file
            racket/sandbox
            racket/promise
-           mzlib/string
+           racket/string
            (for-syntax racket/base))
 
   (provide interaction
@@ -97,18 +97,24 @@
                  (map
                   (lambda (s)
                     (car (format-output s error-color)))
-                  (let sloop ([s (caar val-list+outputs)])
-                     (if ((string-length s) . > . maxlen)
-                         ;; break the error message into multiple lines:
-                         (let loop ([pos (sub1 maxlen)])
-                           (cond
-                            [(zero? pos) (cons (substring s 0 maxlen)
-                                               (sloop (substring s maxlen)))]
-                            [(char-whitespace? (string-ref s pos))
-                             (cons (substring s 0 pos)
-                                   (sloop (substring s (add1 pos))))]
-                            [else (loop (sub1 pos))]))
-                         (list s))))
+                  (filter
+                   (lambda (s) (not (equal? s "")))
+                   (let sloop ([s (caar val-list+outputs)])
+                     (apply
+                      append
+                      (map (lambda (s)
+                             (if ((string-length s) . > . maxlen)
+                                 ;; break the error message into multiple lines:
+                                 (let loop ([pos (sub1 maxlen)])
+                                   (cond
+                                    [(zero? pos) (cons (substring s 0 maxlen)
+                                                       (sloop (substring s maxlen)))]
+                                    [(char-whitespace? (string-ref s pos))
+                                     (cons (substring s 0 pos)
+                                           (sloop (substring s (add1 pos))))]
+                                    [else (loop (sub1 pos))]))
+                                 (list s)))
+                           (regexp-split #rx"\n" s))))))
                  ;; Normal result case:
                  (let ([val-list (caar val-list+outputs)])
                    (if (equal? val-list (list (void)))
@@ -118,7 +124,7 @@
                                                       (list
                                                        (hspace 2)
                                                        (elem #:style result-color
-                                                             (to-element/no-color v #:qq? (print-as-quasiquote)))))))))
+                                                             (to-element/no-color v #:expr? (print-as-expression)))))))))
                             val-list))))
              (loop (cdr expr-paras)
                    (cdr val-list+outputs)
@@ -314,7 +320,7 @@
 
   (define (show-val v)
     (elem #:style result-color
-          (to-element/no-color v #:qq? (print-as-quasiquote))))
+          (to-element/no-color v #:expr? (print-as-expression))))
 
   (define (do-interaction-eval-show ev e)
     (parameterize ([current-command-line-arguments #()])
