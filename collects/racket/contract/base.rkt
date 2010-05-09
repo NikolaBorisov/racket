@@ -10,7 +10,8 @@
          "private/guts.ss"
          "private/legacy.ss"
          "private/ds.ss"
-         "private/opt.ss")
+         "private/opt.ss"
+         "private/generator.rkt")
 
 (provide 
  opt/c define-opt/c ;(all-from-out "private/opt.ss")
@@ -30,5 +31,6 @@
  (all-from-out "private/legacy.ss")
  (except-out (all-from-out "private/guts.ss")
              check-flat-contract
-             check-flat-named-contract))
+             check-flat-named-contract)
+ (all-from-out "private/generator.rkt"))
 

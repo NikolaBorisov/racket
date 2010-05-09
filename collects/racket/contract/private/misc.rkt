@@ -6,7 +6,8 @@
                      "opt-guts.ss")
          racket/promise
          "opt.ss"
-         "guts.ss")
+         "guts.ss"
+         "rand.rkt")
 
 (provide flat-rec-contract
          flat-murec-contract
@@ -714,7 +715,7 @@
 
 (define-syntax (*-immutableof stx)
   (syntax-case stx ()
-    [(_ predicate? fill testmap type-name name)
+    [(_ predicate? fill testmap type-name name generator tester)
      (identifier? (syntax predicate?))
      (syntax
       (let ([fill-name fill])
@@ -740,14 +741,50 @@
                             'type-name
                             val))
                          (fill-name p-app val))))
-                   #:first-order predicate?)))))))]))
+                   #:first-order predicate?
+                   ;; TODO: general collection generator:
+                   #:generator (generator ctc)
+                   #:tester (tester ctc))))))))]))
+
+(define (listof-generator el-ctc)
+  (λ (ctc)
+    (let* ([el-gen (contract-struct-generator el-ctc)])
+      
+      (λ (n-tests size env)
+        (let* ([rem-size (box size)])
+          (define (l-gen l-size)
+            (cond
+              [(<= l-size 0) (list)]
+              [else (let* ([el-size (rand (unbox rem-size))])
+                      (set-box! rem-size (- (unbox rem-size) el-size))
+                      (cons (el-gen 0 el-size env)
+                            (l-gen (- l-size 1))))]))
+          
+
+          (rand-choice
+           [1/4 (list)]
+           [1/4 (begin
+                  (set-box! rem-size (- size 2))
+                  (l-gen 2))]
+           [1/4 (let* ([l-size (rand (min 10 size))])
+                  (set-box! rem-size (- size l-size))
+                  (l-gen l-size))]
+           [else (let* ([l-size (rand size)])
+                   (set-box! rem-size (- size l-size))
+                   (l-gen l-size))]))))))
+              
+              
+                
+(define dummy-tester/generator
+  (λ (ctc)
+    #f))
 
 (define listof
-  (*-immutableof list? map andmap list listof))
+  (*-immutableof list? map andmap list listof listof-generator dummy-tester/generator))
 
 (define (non-empty-list? x) (and (pair? x) (list? (cdr x))))
 (define non-empty-listof
-  (*-immutableof non-empty-list? map andmap non-empty-list non-empty-listof))
+  (*-immutableof non-empty-list? map andmap non-empty-list non-empty-listof dummy-tester/generator dummy-tester/generator))
 
 (define (immutable-vector? val) (and (immutable? val) (vector? val)))
 
@@ -756,7 +793,9 @@
                  (λ (f v) (apply vector-immutable (map f (vector->list v))))
                  (λ (f v) (andmap f (vector->list v)))
                  immutable-vector
-                 vector-immutableof))
+                 vector-immutableof
+                 dummy-tester/generator
+                 dummy-tester/generator))
 
 (define (vectorof p)
   (let* ([ctc (coerce-flat-contract 'vectorof p)]
