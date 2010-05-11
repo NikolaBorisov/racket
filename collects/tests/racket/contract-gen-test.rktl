@@ -2,8 +2,8 @@
 
 (require schemeunit
          schemeunit/text-ui
-         "tmp.ss"
-         "test.ss")
+         "contract-gen-test-code.rktl"
+         "../../../bin/test.ss")
 
 
 (define (tp f)
@@ -32,7 +32,7 @@
    (check-equal? (tp pos->pos/fail)
                  "FAIL")
    (check-equal? (tp listof-int->int/pass)
-                 "PASS")
+                 "UNTESTABLE")
 
    
    ;   ))
