@@ -547,6 +547,7 @@ path/s is either such a string or a list of them.
 "collects/compiler/commands/ctool.rkt" drdr:command-line ""
 "collects/compiler/commands/exe-dir.rkt" drdr:command-line ""
 "collects/compiler/commands/exe.rkt" drdr:command-line ""
+"collects/compiler/commands/make.rkt" drdr:command-line "mzc ~s"
 "collects/compiler/commands/pack.rkt" drdr:command-line ""
 "collects/config" responsible (mflatt eli)
 "collects/defaults" responsible (robby)
@@ -563,53 +564,56 @@ path/s is either such a string or a list of them.
 "collects/deinprogramm/run-dmda-code.rkt" drdr:command-line "mzc ~s"
 "collects/deinprogramm/turtle.rkt" drdr:command-line "mred-text -t ~s"
 "collects/deinprogramm/world.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket" responsible (robby)
+"collects/drracket/arrow.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/drracket.rkt" drdr:command-line "mzc ~s"
+"collects/drracket/main.rkt" drdr:command-line "mzc ~s"
+"collects/drracket/private/app.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/auto-language.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/bindings-browser.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/bitmap-message.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/debug.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/drracket-normal.rkt" drdr:command-line "mzc ~s"
+"collects/drracket/private/eb.rkt" drdr:command-line "mred-text ~s"
+"collects/drracket/private/embedded-snip-utils.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/eval.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/font.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/frame.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/help-desk.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/honu-logo.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/init.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/insert-large-letters.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/label-frame-mred.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/language-configuration.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/language-object-contract.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/language.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/launcher-mred-bootstrap.rkt" drdr:command-line "mzc ~s"
+"collects/drracket/private/launcher-mz-bootstrap.rkt" drdr:command-line "mzc ~s"
+"collects/drracket/private/link.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/main.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/modes.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/module-browser.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/module-language-tools.rkt" drdr:command-line "mred-text ~s"
+"collects/drracket/private/module-language.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/multi-file-search.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/number-snip.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/palaka.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/profile-drs.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/rep.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/stick-figures.rkt" drdr:command-line "mzc ~s"
+"collects/drracket/private/syncheck-debug.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/text.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/tools-drs.rkt" drdr:command-line "mred ~s"
+"collects/drracket/private/tools.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/tracing.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/private/unit.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/sprof.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/syncheck-drracket-button.rkt" drdr:command-line "mred-text ~s"
+"collects/drracket/syncheck.rkt" drdr:command-line "mred-text -t ~s"
+"collects/drracket/tool-lib.rkt" drdr:command-line "mzc ~s"
 "collects/drscheme" responsible (robby)
-"collects/drscheme/arrow.rkt" drdr:command-line "mred-text -t ~s"
 "collects/drscheme/drscheme.rkt" drdr:command-line "mzc ~s"
 "collects/drscheme/main.rkt" drdr:command-line "mzc ~s"
-"collects/drscheme/private/app.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/auto-language.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/bindings-browser.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/bitmap-message.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/debug.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/drscheme-normal.rkt" drdr:command-line "mzc ~s"
-"collects/drscheme/private/eb.rkt" drdr:command-line "mred-text ~s"
-"collects/drscheme/private/embedded-snip-utils.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/eval.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/font.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/frame.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/help-desk.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/honu-logo.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/init.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/insert-large-letters.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/label-frame-mred.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/language-configuration.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/language-object-contract.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/language.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/launcher-mred-bootstrap.rkt" drdr:command-line "mzc ~s"
-"collects/drscheme/private/launcher-mz-bootstrap.rkt" drdr:command-line "mzc ~s"
-"collects/drscheme/private/link.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/main.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/modes.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/module-browser.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/module-language-tools.rkt" drdr:command-line "mred-text ~s"
-"collects/drscheme/private/module-language.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/multi-file-search.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/number-snip.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/palaka.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/prefs-contract.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/profile-drs.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/rep.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/stick-figures.rkt" drdr:command-line "mzc ~s"
-"collects/drscheme/private/syncheck-debug.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/text.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/tools-drs.rkt" drdr:command-line "mred ~s"
-"collects/drscheme/private/tools.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/tracing.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/private/unit.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/sprof.rkt" drdr:command-line "mred-text -t ~s"
-"collects/drscheme/syncheck-drracket-button.rkt" drdr:command-line "mred-text ~s"
-"collects/drscheme/syncheck.rkt" drdr:command-line "mred-text -t ~s"
 "collects/drscheme/tool-lib.rkt" drdr:command-line "mzc ~s"
 "collects/dynext" responsible (mflatt)
 "collects/dynext/private/macinc.rkt" drdr:command-line "mzscheme -f ~s"
@@ -654,7 +658,6 @@ path/s is either such a string or a list of them.
 "collects/eopl" responsible (eli)
 "collects/errortrace" responsible (mflatt)
 "collects/ffi" responsible (eli)
-"collects/ffi/esd.rkt" drdr:command-line "mzc ~s"
 "collects/ffi/examples/c-printf.rkt" drdr:command-line "mzc -k ~s"
 "collects/ffi/examples/esd.rkt" drdr:command-line "mzc ~s"
 "collects/ffi/examples/magick.rkt" drdr:command-line "mzc ~s"
@@ -669,14 +672,8 @@ path/s is either such a string or a list of them.
 "collects/ffi/examples/use-xosd.rkt" drdr:command-line "mzc ~s"
 "collects/ffi/examples/xmmsctrl.rkt" drdr:command-line ""
 "collects/ffi/examples/xosd.rkt" drdr:command-line "mzc ~s"
-"collects/ffi/magick.rkt" drdr:command-line "mzc ~s"
 "collects/ffi/objc.rkt" drdr:command-line "mzc ~s"
-"collects/ffi/private/objc-doc-unsafe.rkt" drdr:command-line "mzc ~s"
-"collects/ffi/sndfile.rkt" drdr:command-line "mzc ~s"
-"collects/ffi/tcl.rkt" drdr:command-line "mzc ~s"
 "collects/ffi/unsafe/objc.rkt" drdr:command-line "mzc ~s"
-"collects/ffi/xmmsctrl.rkt" drdr:command-line "mzc ~s"
-"collects/ffi/xosd.rkt" drdr:command-line "mzc ~s"
 "collects/file" responsible (mflatt)
 "collects/framework" responsible (robby)
 "collects/framework/collapsed-snipclass.rkt" drdr:command-line "mred-text -t ~s"
@@ -1109,9 +1106,17 @@ path/s is either such a string or a list of them.
 "collects/r6rs" responsible (mflatt)
 "collects/r6rs/run.rkt" drdr:command-line "mzc ~s"
 "collects/racket" responsible (mflatt)
+"collects/racket/contract/private/arrow.rkt" responsible (robby)
+"collects/racket/contract/private/base.rkt" responsible (robby)
+"collects/racket/contract/private/ds-helpers.rkt" responsible (robby)
+"collects/racket/contract/private/ds.rkt" responsible (robby)
+"collects/racket/contract/private/guts.rkt" responsible (robby)
+"collects/racket/contract/private/helpers.rkt" responsible (robby)
 "collects/racket/gui/base.rkt" drdr:command-line "mred -t ~s"
 "collects/racket/gui/init.rkt" drdr:command-line "mred -t ~s"
 "collects/racket/gui.rkt" drdr:command-line "mred -t ~s"
+"collects/racket/match" responsible (samth)
+"collects/racket/match.rkt" responsible (samth)
 "collects/raclog" responsible (jay)
 "collects/raco" responsible (mflatt)
 "collects/raco/main.rkt" drdr:command-line ""
@@ -1167,30 +1172,22 @@ path/s is either such a string or a list of them.
 "collects/redex/tests/run-tests.rkt" drdr:command-line "mred-text ~s --examples --no-bitmaps" drdr:timeout 300
 "collects/redex/tests/term-test.rkt" drdr:command-line "mzc ~s"
 "collects/redex/tests/tl-test.rkt" drdr:command-line "mzc ~s"
-"collects/repos-time-stamp" responsible (eli)
-"collects/repos-time-stamp/time-stamp.rkt" drdr:command-line "mred-text -t ~s"
+"collects/repo-time-stamp" responsible (eli)
+"collects/repo-time-stamp/time-stamp.rkt" drdr:command-line "mred-text -t ~s"
 "collects/rnrs" responsible (mflatt)
 "collects/s-exp" responsible (mflatt eli)
 "collects/scheme" responsible (mflatt sstrickl samth robby eli)
-"collects/scheme/contract/private/arrow.rkt" responsible (robby)
-"collects/scheme/contract/private/base.rkt" responsible (robby)
-"collects/scheme/contract/private/ds-helpers.rkt" responsible (robby)
-"collects/scheme/contract/private/ds.rkt" responsible (robby)
-"collects/scheme/contract/private/guts.rkt" responsible (robby)
-"collects/scheme/contract/private/helpers.rkt" responsible (robby)
 "collects/scheme/gui/base.rkt" drdr:command-line "mred-text -t ~s"
 "collects/scheme/gui/init.rkt" drdr:command-line "mred-text -t ~s"
 "collects/scheme/gui.rkt" drdr:command-line "mred-text -t ~s"
-"collects/scheme/match" responsible (samth)
 "collects/scheme/match.rkt" responsible (samth)
 "collects/schemeunit" responsible (jay)
 "collects/schemeunit/gui.rkt" drdr:command-line "mred-text -t ~s"
 "collects/scribble" responsible (mflatt eli)
 "collects/scribble/run.rkt" drdr:command-line "mzc ~s"
 "collects/scribble/tools/drscheme-buttons.rkt" drdr:command-line "mred-text ~s"
-"collects/scribble/tools/private/mk-drs-bitmaps.rkt" drdr:command-line "mred-text ~s" drdr:timeout 600
+"collects/scribble/tools/private/mk-drs-bitmaps.rkt" drdr:command-line "gracket-text ~s skip"
 "collects/scribblings" responsible (mflatt eli robby mathias)
-"collects/scribblings/foreign/unsafe-foreign.rkt" drdr:command-line "mzc ~s"
 "collects/scribblings/framework/standard-menus.scrbl" drdr:command-line ""
 "collects/scribblings/guide/contracts-examples/6.rkt" drdr:command-line "mzscheme -f ~s"
 "collects/scribblings/guide/read.scrbl" drdr:command-line ""
@@ -1332,22 +1329,22 @@ path/s is either such a string or a list of them.
 "collects/tests/deinprogramm" responsible (sperber)
 "collects/tests/deinprogramm/image.rkt" drdr:command-line "mred-text -t ~s"
 "collects/tests/deinprogramm/run-image-test.rkt" drdr:command-line "mred-text -t ~s"
-"collects/tests/drscheme" responsible (robby)
-"collects/tests/drscheme/drscheme-test-util.rkt" drdr:command-line "mred -t ~s"
-"collects/tests/drscheme/io.rkt" drdr:command-line "mred ~s"
-"collects/tests/drscheme/language-test.rkt" drdr:command-line "mred ~s" drdr:timeout 600
-"collects/tests/drscheme/module-lang-test-utils.rkt" drdr:command-line "mred-text -t ~s"
-"collects/tests/drscheme/module-lang-test.rkt" drdr:command-line "mred ~s" drdr:timeout 120
-"collects/tests/drscheme/randomly-click-language-dialog.rkt" drdr:command-line "mzc ~s"
-"collects/tests/drscheme/randomly-click-preferences.rkt" drdr:command-line "mzc ~s"
-"collects/tests/drscheme/randomly-click.rkt" drdr:command-line ""
-"collects/tests/drscheme/repl-test.rkt" drdr:command-line "mred ~s" drdr:timeout 600
-"collects/tests/drscheme/sample-solutions-one-window.rkt" drdr:command-line "mred-text -t ~s"
-"collects/tests/drscheme/save-teaching-lang-file.rkt" drdr:command-line "mred ~s"
-"collects/tests/drscheme/stepper-test.rkt" drdr:command-line "mred-text -t ~s"
-"collects/tests/drscheme/syncheck-test.rkt" drdr:command-line "mred ~s"
-"collects/tests/drscheme/teachpack.rkt" drdr:command-line "mred ~s"
-"collects/tests/drscheme/time-keystrokes.rkt" drdr:command-line "mred-text -t ~s"
+"collects/tests/drracket" responsible (robby)
+"collects/tests/drracket/drracket-test-util.rkt" drdr:command-line "mred -t ~s"
+"collects/tests/drracket/io.rkt" drdr:command-line "mred ~s"
+"collects/tests/drracket/language-test.rkt" drdr:command-line "mred ~s" drdr:timeout 600
+"collects/tests/drracket/module-lang-test-utils.rkt" drdr:command-line "mred-text -t ~s"
+"collects/tests/drracket/module-lang-test.rkt" drdr:command-line "mred ~s" drdr:timeout 120
+"collects/tests/drracket/randomly-click-language-dialog.rkt" drdr:command-line "mzc ~s"
+"collects/tests/drracket/randomly-click-preferences.rkt" drdr:command-line "mzc ~s"
+"collects/tests/drracket/randomly-click.rkt" drdr:command-line ""
+"collects/tests/drracket/repl-test.rkt" drdr:command-line "mred ~s" drdr:timeout 600
+"collects/tests/drracket/sample-solutions-one-window.rkt" drdr:command-line "mred-text -t ~s"
+"collects/tests/drracket/save-teaching-lang-file.rkt" drdr:command-line "mred ~s"
+"collects/tests/drracket/stepper-test.rkt" drdr:command-line "mred-text -t ~s"
+"collects/tests/drracket/syncheck-test.rkt" drdr:command-line "mred ~s"
+"collects/tests/drracket/teachpack.rkt" drdr:command-line "mred ~s"
+"collects/tests/drracket/time-keystrokes.rkt" drdr:command-line "mred-text -t ~s"
 "collects/tests/framework" responsible (robby)
 "collects/tests/framework/canvas.rkt" drdr:command-line "mzc -k ~s"
 "collects/tests/framework/debug.rkt" drdr:command-line "mzc -k ~s"
@@ -1590,7 +1587,6 @@ path/s is either such a string or a list of them.
 "collects/tests/racket/place-channel.rktl" drdr:command-line ""
 "collects/tests/racket/port.rktl" drdr:command-line ""
 "collects/tests/racket/portlib.rktl" drdr:command-line ""
-"collects/tests/racket/pp-regression.rkt" drdr:command-line ""
 "collects/tests/racket/pretty.rktl" drdr:command-line "racket -f ~s"
 "collects/tests/racket/procs.rktl" drdr:command-line ""
 "collects/tests/racket/prompt-tests.rktl" drdr:command-line ""
@@ -1810,25 +1806,25 @@ path/s is either such a string or a list of them.
 "doc/release-notes/gracket" responsible (mflatt)
 "doc/release-notes/racket" responsible (mflatt)
 "doc/release-notes/stepper" responsible (clements)
-"man/man1/drscheme.1" responsible (robby)
 "man/man1/drracket.1" responsible (robby)
-"man/man1/mred.1" responsible (mflatt)
+"man/man1/drscheme.1" responsible (robby)
 "man/man1/gracket.1" responsible (mflatt)
+"man/man1/mred.1" responsible (mflatt)
 "man/man1/mzscheme.1" responsible (mflatt)
+"man/man1/plt-help.1" responsible (robby)
 "man/man1/racket.1" responsible (mflatt)
 "man/man1/raco.1" responsible (mflatt)
-"man/man1/plt-help.1" responsible (robby)
 "src/Makefile.in" responsible (mflatt)
 "src/README" responsible (mflatt)
 "src/a-list" responsible (mflatt)
 "src/configure" responsible (mflatt)
 "src/foreign" responsible (eli)
+"src/gracket" responsible (mflatt)
 "src/lt" responsible (mflatt)
 "src/mac" responsible (mflatt)
-"src/mred" responsible (mflatt)
 "src/mysterx" responsible (eli)
 "src/mzcom" responsible (eli)
-"src/mzscheme" responsible (mflatt)
+"src/racket" responsible (mflatt)
 "src/worksp" responsible (mflatt)
 "src/wxcommon" responsible (mflatt)
 "src/wxmac" responsible (mflatt)
