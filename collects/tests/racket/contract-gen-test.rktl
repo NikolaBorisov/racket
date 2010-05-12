@@ -3,7 +3,7 @@
 (require schemeunit
          schemeunit/text-ui
          "contract-gen-test-code.rktl"
-         "../../../bin/test.ss")
+         racunit/rand-test)
 
 
 (define (tp f)

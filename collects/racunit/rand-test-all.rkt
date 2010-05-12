@@ -1,7 +1,8 @@
 #lang scheme
 
-(require "test.ss"
-         "../collects/meta/props"
+(require racunit/rand-test
+         meta/props
+         ;"../collects/meta/props"
          srfi/13)
 
 (define module-path "tmp.ss")
