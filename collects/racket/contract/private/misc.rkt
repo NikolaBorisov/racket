@@ -715,7 +715,7 @@
 
 (define-syntax (*-immutableof stx)
   (syntax-case stx ()
-    [(_ predicate? fill testmap type-name name generator tester)
+    [(_ predicate? fill testmap type-name name)
      (identifier? (syntax predicate?))
      (syntax
       (let ([fill-name fill])
@@ -741,10 +741,136 @@
                             'type-name
                             val))
                          (fill-name p-app val))))
-                   #:first-order predicate?
-                   ;; TODO: general collection generator:
-                   #:generator (generator ctc)
-                   #:tester (tester ctc))))))))]))
+                   #:first-order predicate?)))))))]))
+
+
+(define (listof element-ctc)
+;  (printf "bla")
+  (if (flat-contract? element-ctc)
+      (begin 
+;        (printf "flat\n")
+        (make-listof-flat/c element-ctc))
+      (begin 
+;        (printf "non-flat\n")
+      (make-listof/c element-ctc))))
+
+
+(define (listof-generator el-ctc)
+   (let* ([el-c (coerce-contract el-ctc el-ctc)]
+          [el-gen (contract-struct-generator el-c)])
+      
+      (λ (n-tests size env)
+        (let* ([rem-size (box size)])
+          
+          (define (l-gen l-size)
+            (cond
+              [(or (<= l-size 0)
+                   (<= (unbox rem-size) 0)) (list)]
+              [else (let* ([el-size (rand (unbox rem-size))])
+                      (set-box! rem-size (- (unbox rem-size) el-size))
+                      (cons (el-gen 0 el-size env)
+                            (l-gen (- l-size 1))))]))
+          
+
+          (rand-choice
+           [1/4 (list)]
+           [1/4 (begin
+                  (set-box! rem-size (- size 2))
+                  (l-gen 2))]
+           [1/4 (let* ([l-size (rand (min 10 size))])
+                  (set-box! rem-size (- size l-size))
+                  (l-gen l-size))]
+           [else (let* ([l-size (rand size)])
+                   (set-box! rem-size (- size l-size))
+                   (l-gen l-size))])))))
+
+(define (listof-tester el-ctc)
+  (λ (f n-tests size env)
+    #t))
+
+  ;(*-immutableof list? map andmap list listof))
+
+(define-struct listof-flat/c (element-ctc)
+  #:omit-define-syntaxes
+  #:property prop:flat-contract
+  (build-flat-contract-property
+   #:name 
+   (λ (ctc)
+     (build-compound-type-name 'listof (listof-flat/c-element-ctc ctc)))
+   #|
+   #:projection
+   (λ (ctc)
+     ;     (let* ([content-pred? (listof-flat/c-element-ctc ctc)])
+     (let* ([content-ctc (listof-flat/c-element-ctc ctc)]
+            [content-pred? (flat-contract-predicate ctc)])
+       (λ (blame)
+         (λ (x)
+           (unless (and (list? x) (andmap content-pred? x))
+             (raise-blame-error
+                blame
+                x
+                "expected <~a>, given: ~e"
+                'type-name
+                x))
+           #t))))
+|#
+   #:first-order
+   (λ (ctc)
+     (let ([content-pred? (listof-flat/c-element-ctc ctc)])
+       (λ (val)
+         (and (list? val) (andmap content-pred? val)))))
+   #:generator
+   (λ (ctc)
+;     #f)
+     (listof-generator (listof-flat/c-element-ctc ctc)))
+   #:tester
+   (λ (ctc)
+;     #f)))
+     (listof-tester (listof-flat/c-element-ctc ctc)))))
+         
+   
+   
+
+(define-struct listof/c (element-ctc)
+  #:omit-define-syntaxes
+  #:property prop:contract
+  (build-contract-property
+   #:name 
+   (λ (ctc)
+     (build-compound-type-name 'listof (listof/c-element-ctc ctc)))
+   #:projection
+   (λ (ctc)
+     (let* ([el-ctc (listof/c-element-ctc ctc)]
+            [proj (contract-projection el-ctc)])
+       (λ (blame)
+         (let ([p-app (proj blame)])
+           (λ (val)
+             (unless (list? val)
+               (raise-blame-error
+                blame
+                val
+                "expected <~a>, given: ~e"
+                'type-name
+                val))
+             (map p-app val))))))
+   #:first-order
+   (λ (ctc)
+     list?)
+   #:generator
+   (λ (ctc)
+;     #f)
+     (listof-generator (listof/c-element-ctc ctc)))
+   #:tester
+   (λ (ctc)
+;     #f)))
+     (listof-tester (listof/c-element-ctc ctc)))))
+
+
+
+#|
+
+
+
 
 (define (listof-generator el-ctc)
   (λ (ctc)
@@ -779,12 +905,16 @@
   (λ (ctc)
     #f))
 
+
 (define listof
-  (*-immutableof list? map andmap list listof listof-generator dummy-tester/generator))
+  (*-immutableof list? map andmap list listof))
+|#
+
+
 
 (define (non-empty-list? x) (and (pair? x) (list? (cdr x))))
 (define non-empty-listof
-  (*-immutableof non-empty-list? map andmap non-empty-list non-empty-listof dummy-tester/generator dummy-tester/generator))
+  (*-immutableof non-empty-list? map andmap non-empty-list non-empty-listof))
 
 (define (immutable-vector? val) (and (immutable? val) (vector? val)))
 
@@ -793,9 +923,7 @@
                  (λ (f v) (apply vector-immutable (map f (vector->list v))))
                  (λ (f v) (andmap f (vector->list v)))
                  immutable-vector
-                 vector-immutableof
-                 dummy-tester/generator
-                 dummy-tester/generator))
+                 vector-immutableof))
 
 (define (vectorof p)
   (let* ([ctc (coerce-flat-contract 'vectorof p)]

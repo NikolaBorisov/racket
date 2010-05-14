@@ -1,6 +1,5 @@
 #lang scheme
 
-
 (define (int->int/pass x)
   (+ x (random 100)))
 
@@ -30,6 +29,7 @@
   n)
 
 (define (listof-int->int/pass l)
+  (printf "~a\n" l)
   (length l))
 
 (provide/contract

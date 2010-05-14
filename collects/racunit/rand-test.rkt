@@ -65,7 +65,7 @@
                                                                        (printf "#######################\n~a\n" e)
                                                                        (void)))
                                                                #f)])
-                           (tester f 1000 1 (list)))])
+                           (tester f 1000 1000 (list)))])
               (if t-res
                   "PASS"
                   "FAIL")))
@@ -110,6 +110,7 @@
                 filtered-fs
                 results)))
     #t)))
+
 
 ;(test-module module-path)
   

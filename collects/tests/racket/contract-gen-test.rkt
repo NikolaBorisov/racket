@@ -2,12 +2,17 @@
 
 (require schemeunit
          schemeunit/text-ui
-         "contract-gen-test-code.rktl"
+         "contract-gen-test-code.rkt"
          racunit/rand-test)
 
 
 (define (tp f)
   (test-procedure f  #:just-attempt #f #:exit-on-error #f #:print-error #f))
+
+(define (tpd f)
+  (test-procedure f  #:just-attempt #f #:exit-on-error #t #:print-error #t))
+
+
 
 ;(define contract-generator-tests
 ;  (test-suite
@@ -31,8 +36,8 @@
                  "PASS")
    (check-equal? (tp pos->pos/fail)
                  "FAIL")
-   (check-equal? (tp listof-int->int/pass)
-                 "UNTESTABLE")
+   (check-equal? (tpd listof-int->int/pass)
+                 "PASS")
 
    
    ;   ))

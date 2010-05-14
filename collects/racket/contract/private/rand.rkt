@@ -20,6 +20,8 @@
   (parameterize ([current-pseudo-random-generator my-generator])
     (random-seed x)))
 
+(rand-seed 0)
+
 (define-syntax (rand-choice stx)
   (syntax-case stx ()
     [(_ (a case1 case2 ...) ...)
