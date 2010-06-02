@@ -20,7 +20,7 @@ v4 todo:
 
 (require "guts.ss"
          "opt.ss"
-         "generator.rkt"
+         "generator-base.rkt"
          racket/stxparam)
 (require (for-syntax racket/base)
          (for-syntax "opt-guts.ss")
@@ -32,6 +32,8 @@ v4 todo:
          ->*
          ->d
          case->
+         ->-rngs/c
+         ->-doms/c
          unconstrained-domain->
          the-unsupplied-arg 
          making-a-method

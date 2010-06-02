@@ -11,7 +11,9 @@
          "private/legacy.ss"
          "private/ds.ss"
          "private/opt.ss"
-         "private/generator.rkt")
+         "private/generator.rkt"
+         "private/generator-base.rkt"
+         "private/env.rkt")
 
 (provide 
  opt/c define-opt/c ;(all-from-out "private/opt.ss")
@@ -22,7 +24,9 @@
              making-a-method
              procedure-accepts-and-more?
              check-procedure
-             check-procedure/more)
+             check-procedure/more
+             ->-rngs/c
+             ->-doms/c)
  (except-out (all-from-out "private/misc.ss")
              check-between/c
              check-unary-between/c)
@@ -32,5 +36,7 @@
  (except-out (all-from-out "private/guts.ss")
              check-flat-contract
              check-flat-named-contract)
- (all-from-out "private/generator.rkt"))
+ (all-from-out "private/generator.rkt")
+ (all-from-out "private/generator-base.rkt")
+ (all-from-out "private/env.rkt"))
 

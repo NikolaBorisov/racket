@@ -18,6 +18,13 @@
 (define (pos->pos/fail x)
   (- x 1))
 
+(define (listof-int->int/pass l)
+  ;(printf "~a\n" l)
+  (length l))
+
+(define (rational->int f)
+  (ceiling f))
+
 (define (f fun)
   (fun -843))
 
@@ -28,9 +35,7 @@
 (define (f2 n)
   n)
 
-(define (listof-int->int/pass l)
-  (printf "~a\n" l)
-  (length l))
+
 
 (provide/contract
  [int->int/pass (integer? . -> . integer?)]
@@ -42,4 +47,5 @@
  [listof-int->int/pass ((listof integer?) . -> . integer?)]
  [f ((integer? . -> . positive?) . -> . positive?)]
  [g (integer? . -> . (integer? . -> . positive?))]
- [f2 (negative? . -> . negative?)])
+ [f2 (negative? . -> . negative?)]
+ [rational->int (rational? . -> . integer?)])

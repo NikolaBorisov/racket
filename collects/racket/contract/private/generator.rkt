@@ -1,28 +1,26 @@
-#lang scheme/base
+#lang racket/base
 
-(require "rand.rkt")
+(require "rand.rkt"
+         "generator-base.rkt"
+         "guts.rkt"
+         racket/list)
 
 (provide
- env-item
- find-generator
- get-arg-names-space
- gen-arg-names
- print-freq
- count-missing-generator
- (all-from-out "rand.rkt"))
+ use-env
+ env-item)
 
 ;; generator 
 (define-struct env-item (ctc name))
 
 ;; hash tables
-(define freq-hash (make-hash))
-(define gen-hash (make-hash))
+;(define freq-hash (make-hash))
+;(define gen-hash (make-hash))
 
 ;; thread-cell
-(define arg-names-count (make-thread-cell 0))
+;(define arg-names-count (make-thread-cell 0))
 
 ;; Generator integer? 
-(hash-set! gen-hash integer? 
+(add-generator integer?
            (λ (n-tests size env)
              (rand-choice
               [1/10 0]
@@ -33,8 +31,12 @@
               [3/10 (- 100 (rand 200))]
               [else (- 1000000000 (rand 2000000000))])))
 
+(add-generator exact-nonnegative-integer?
+               (λ (n-tests size env)
+                 (abs ((find-generator integer?) n-tests size env))))
 
-(hash-set! gen-hash positive?
+
+(add-generator positive?
            (λ (n-tests size env)
              (rand-choice
               [1/10 1]
@@ -42,39 +44,32 @@
               [1/10 0.12]
               [1/10 2147483647]
               [else 4])))
-;              [else (* (rand 1) 2000000000)])))
-;             (+ (abs (- 50 (rand 100))) 1)))
 
-(define (count-missing-generator ctc)
-  (hash-update! freq-hash 
-               ctc 
-               (λ (x)
-                 (+ x 1))
-               0))
+(add-generator boolean?
+           (λ (n-tests size env)
+             (define (boolean?-static n-tests size env)
+               (rand-choice
+                [1/2 #t]
+                [else #f]))
+             
+             (rand-choice
+              [2/3 (boolean?-static n-tests size env)]
+              [else (let-values ([(res v) (use-env n-tests size env boolean?)])
+                      (if res
+                          v
+                          (boolean?-static n-tests size env)))])))
 
-;; given a predicate returns a generator for this predicate or #f
-(define (find-generator func name)
-  (let ([gen (hash-ref gen-hash func #f)])
-    (if gen
-        gen
-        (begin 
-;          (printf "func ~a\n" name)
-          (count-missing-generator name)
-          #f))))
+(define (use-env n-tests size env ctc)
+  (let ([options (flatten (map (λ (e-i)
+                                 (if (contract-stronger? ctc (env-item-ctc e-i))
+                                     (list (env-item-name e-i))
+                                     (list)))
+                               env))])
+    (if (> (length options) 0)
+        (values #t (list-ref options (rand (length options))))
+        (values #f #f))))
 
-(define (print-freq)
-  (printf "Generator frequency:\n")
-  (hash-for-each freq-hash (λ (k v)
-                             (printf "~a ~a\n" v k))))
 
-(define (get-arg-names-space space-needed)
-  (let ([rv (thread-cell-ref arg-names-count)])
-    (thread-cell-set! arg-names-count (+ rv space-needed))
-    rv))
 
-(define (gen-arg-names st-num size)
-  (cond
-    [(<= size 0) (list)]
-    [else (cons (string->symbol (string-append "x-" (number->string st-num)))
-                (gen-arg-names (+ st-num 1) (- size 1)))]))
+
 

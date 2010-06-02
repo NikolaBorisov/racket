@@ -1123,6 +1123,7 @@ path/s is either such a string or a list of them.
 "collects/raco/raco.rkt" drdr:command-line ""
 "collects/racunit" responsible (jay noel ryanc)
 "collects/racunit/gui.rkt" responsible (ryanc) drdr:command-line "mred-text -t ~s"
+"collects/racunit/rand-test-all.rkt" responsible (robby) drdr:command-line ""
 "collects/racunit/private/gui" responsible (ryanc)
 "collects/racunit/private/gui/config.rkt" drdr:command-line "mred-text -t ~s"
 "collects/racunit/private/gui/controller.rkt" drdr:command-line "mred-text -t ~s"

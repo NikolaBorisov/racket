@@ -3,7 +3,8 @@
 (require "helpers.ss"
          "blame.ss"
          "prop.ss"
-         "generator.rkt"
+         "rand.rkt"
+         "generator-base.rkt"
          racket/pretty)
 
 (require (for-syntax racket/base
@@ -48,6 +49,8 @@
          check-flat-contract
          check-flat-named-contract
          any)
+
+
 
 (define-values (prop:contracted has-contract? value-contract)
   (let-values ([(prop pred get)
@@ -393,3 +396,4 @@
            (error "Contract Generator Error 1")))))))
 
 (define (build-flat-contract name pred) (make-predicate-contract name pred))
+
