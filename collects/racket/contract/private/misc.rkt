@@ -777,10 +777,10 @@
            [1/4 (begin
                   (set-box! rem-size (- size 2))
                   (l-gen 2))]
-           [1/4 (let* ([l-size (rand (min 10 size))])
+           [1/4 (let* ([l-size (rand (min 10 (+ size 1)))])
                   (set-box! rem-size (- size l-size))
                   (l-gen l-size))]
-           [else (let* ([l-size (rand size)])
+           [else (let* ([l-size (rand (+ size 1))])
                    (set-box! rem-size (- size l-size))
                    (l-gen l-size))])))))
 

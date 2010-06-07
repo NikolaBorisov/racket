@@ -17,14 +17,45 @@
   (call-with-values f (λ args args)))
   
 
+(define (test-use-env env ctc)
+  (let-values ([(res f) (use-env 0 0 env ctc)])
+    (if res
+        (let ([v f])
+          (printf "~a\n" v)
+          (check-pred ctc v))
+        #f)
+    res))
 
 ;(define contract-generator-tests
 ;  (test-suite
 ;   "Tests for the random test generator based on contracts."
 
-(check-equal? (list #f #f)
-              (list #f #f))
+(check-equal? (test-use-env (list) integer?)
+              #f)
 
+(define simple-env (list (env-item (value-contract int->int/pass) 
+                                   int->int/pass)))
+
+(define env1 (list (env-item (value-contract int->int/pass) 
+                             int->int/pass)
+                   (env-item (value-contract pos->int/pass) 
+                             pos->int/pass)
+                   (env-item (value-contract pos->pos/pass) 
+                             pos->pos/pass)
+                   (env-item (value-contract listof-int->int/pass) 
+                             listof-int->int/pass)
+                   (env-item (value-contract listof-int->int/pass) 
+                             listof-int->int/pass)
+                   (env-item (value-contract rational->int) 
+                             rational->int)))
+
+(check-equal? (test-use-env simple-env integer?)
+              #t)
+
+(check-equal? (test-use-env env1 integer?)
+              #t)
+
+#|
 (check-equal? (call-with-values (λ () (use-env 0 0 (list) integer?)) (λ args args))
               (call-with-values (λ () (values #f #f)) (λ args args)))
 
@@ -49,7 +80,8 @@
 
    ;(check-equal? (use-env 0 0 (list) integer?)
     ;             #f)
-   
+ |# 
+ 
    (check-equal? (tp f)
                  "PASS")
    (check-equal? (tp g)

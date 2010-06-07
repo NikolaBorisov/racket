@@ -61,9 +61,9 @@
                           (boolean?-static n-tests size env)))])))
 
 
-(define (gen-opts have-val want-ctc have-ctc)
+(define (gen-opts have-val want-ctc have-ctc n-tests size env)
   (append (if (contract-stronger? have-ctc want-ctc)
-              (list (λ () have-val))
+              (list have-val)
               '())
           (if (->? have-ctc)
               (let* ([gens (map contract-struct-generator
@@ -75,29 +75,50 @@
                       (if (empty? result-ctcs)
                           '()
                           (let* ([args (map (λ (g)
-                                              (g 0 0 (list)))
+                                              ; what should n-tests and size be
+                                              (g 0 0 env))
                                             gens)])
                             (append (gen-opts (λ ()
-                                                (call-with-values (apply have-val args)
+                                                (call-with-values (λ ()
+                                                                    (apply have-val args))
                                                                   (λ args
                                                                     (list-ref args i)))) 
                                               want-ctc 
-                                              (first result-ctcs))
+                                              (first result-ctcs)
+                                              n-tests
+                                              size
+                                              env)
                                     (useful-results (rest result-ctcs) (+ i 1))))))))
                 '())))
 
-(define (use-env n-tests size env ctc)
+(define (use-env n-tests size env ctc
+                 #:test [is-test #f])
   (let ([options (flatten (map (λ (e-i)
                                  ;; contact-stronger? stronger weaker -> #
                                  (gen-opts (env-item-name e-i)
                                            ctc
-                                           (env-item-ctc e-i)))
+                                           (env-item-ctc e-i)
+                                           n-tests
+                                           size
+                                           env))
                                env))])
-                                           
     (if (> (length options) 0)
-        (values #t ((list-ref options (rand (length options)))))
+        (values #t (if is-test
+                       options
+                       ((list-ref options (rand (length options))))))
         (values #f #f))))
 
+(define (generator ctc env)
+  (let ([g (contract-struct-generator ctc)]
+        [e (let-values ([(res f) (use-env 0 0 env)])
+             res)])
+    (if (or g e)
+        (λ (n-tests size env)
+          (rand-choice
+           [1/2 (g n-tests size env)]
+           [else (let-values ([(res v) (use-env n-tests size env)])
+                   v)]))
+        #f)))
 
 
 
