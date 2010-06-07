@@ -3,7 +3,7 @@
 (require schemeunit
          schemeunit/text-ui
          "contract-gen-test-code.rkt"
-         racunit/rand-test-procedure
+         rackunit/rand-test-procedure
          racket/contract/private/generator)
 
 
@@ -21,7 +21,7 @@
   (let-values ([(res f) (use-env 0 0 env ctc)])
     (if res
         (let ([v f])
-          (printf "~a\n" v)
+;          (printf "~a\n" v)
           (check-pred ctc v))
         #f)
     res))

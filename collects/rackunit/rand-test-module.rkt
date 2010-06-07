@@ -6,19 +6,8 @@
 (provide
  test-module)
 
-;(define has-contract? (λ (f) #t))
-;(require contract)
-
-;(define module-path "tmp.ss")
-;(define zo-file "compiled/tmp_ss.zo")
-
-
-
-;(define module-path "../collects/html/html.ss")
-;(define zo-file "../collects/html/compiled/html_ss.zo")
-
-;(module-compiled-imports
-
+;; get-zo-path : path -> path
+;; given the path of a module this function make a guess of where the compiled .zo file is.
 (define (get-zo-path module-path)
     (let* ([path (regexp-split #rx"/" module-path)]
            [pure-path (remove (list-ref path (- (length path) 1)) path)]
@@ -32,6 +21,8 @@
                                    zo-filename)])
       zo-path))
 
+;; get-env-stuff : path, path -> (list-of contracted-procedures)
+;; this functions looks for all the contracted-procedures available to each function in the module.
 (define (get-env-stuff module-path zo-path)
   (let* ([res-l (module-compiled-imports (parameterize ([read-accept-compiled #t])
                                          (call-with-input-file zo-path read)))]
@@ -47,6 +38,8 @@
                            module-paths
                            zo-paths)))))
 
+;; get-exported-stuff : path, path -> (list-of contracted-procedures)
+;; Given a path to a module and the compiled zo-file this fuction produces a list of functions that have contracts and are exported by this module
 (define (get-exported-stuff module-path zo-file)
   
   (define (get-names table)
@@ -64,22 +57,14 @@
   
   (let ([has-contract? (dynamic-require 'racket/contract 'has-contract?)])
     
-;    (printf "before\n")
-    (with-handlers ((exn:fail? (λ (x) ;(printf "dynamic-require module error: ~a\n" x)
-                                 null)))
+    (with-handlers ((exn:fail? (λ (x) null)))
       
       (dynamic-require module-path #f)
- ;     (printf "after\n")
-      (filter has-contract? (map (λ (x) (with-handlers ((exn:fail? (λ (x) ;(printf "DRE: ~a\n" x)
-                                                                     'idonthaveacontract)))
+      
+      (filter has-contract? (map (λ (x) (with-handlers ((exn:fail? (λ (x) 'idonthaveacontract)))
                                           (dynamic-require module-path x)))
                                  exported-names)))))
-  ;(printf "after\n")
   
-
-;(get-exported-stuff "tmp.ss" "compiled/tmp_ss.zo")
-;(get-exported-stuff module-path zo-file)
-
      
 ;; random test all the functions in a module
 (define (test-module module-path 
@@ -98,7 +83,7 @@
         (begin 
           (parameterize ([sandbox-output 'string])
             (let ([e (make-evaluator 'scheme/base
-                                     #:allow-read (list module-path "../collects/racunit/rand-test.rkt"))])
+                                     #:allow-read (list module-path "../collects/rackunit/rand-test-module.rkt"))])
               
               (printf "Testing module ~a Seed: ~a\n" module-path r-seed)
               (call-in-sandbox-context
@@ -121,7 +106,7 @@
                                      (call-in-sandbox-context
                                       e
                                       (λ ()
-                                        ((dynamic-require 'racunit/rand-test-procedure 'test-procedure)
+                                        ((dynamic-require 'rackunit/rand-test-procedure 'test-procedure)
                                          f
                                          env
                                          #:just-attempt just-attempt 
@@ -140,5 +125,4 @@
           #t))))
 
 
-;(test-module module-path)
   

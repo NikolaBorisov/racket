@@ -1,7 +1,7 @@
 #lang scheme
 
-(require racunit/rand-test
-;         meta/props
+(require rackunit/rand-test-module
+
          "../meta/props"
          srfi/13)
 
@@ -21,49 +21,55 @@
          (equal? (last sp) "rkt"))))
 
 (define (should-test? path)
-  (let ([st (with-handlers ((exn:fail? (λ (e)
-                                         "racket")))
-                (get-prop (substring path 3) `drdr:command-line))])
+  (let* ([s-exp (with-handlers ((exn:fail? (λ (e)
+                                         ;(printf "~a\n" e)
+                                         '(racket *))))
+                (let ([s (get-prop (substring path 3) `drdr:command-line)])
+                  ;(printf "~a\n" s)
+                  s))]
+        [st (format "~s" s-exp)])
     (cond
+      [(string-contains st "gracket") #f]
       [(string-contains st "racket") #t]
       [(string-contains st "mzscheme") #t]
       [(string-contains st "mzc") #f]
       [(string-contains st "mred") #f]
-      [(equal? st "") #f]
+      [(equal? st "#f") #f]
       [else 
        (printf "PROP NOT HANDLED ~s\n" st) #f])
     )
   )
 
-#|
-(define (should-test? path)
-  (let ([ev (run-with path)])
-    (or (equal? ev "racket")
-        (equal? ev "mzscheme"))))
-|#
-;(map run-with (map path->string (find-files ss-file? directory)))
 
-;; test everything
-(define (build-freq)
+;; tests everything
+(define (test-all
+         #:just-build-freq [just-build-freq #f])
   (with-handlers ((exn:break? (λ (x)
                                 (printf "Exiting...\n"))))
   (map (λ (path)
          (if (should-test? path)
-             (test-module path #:just-attempt #t)
+             (with-handlers ((exn:fail? (λ (e)
+                                          (let ([st (format "~s" e)])
+                                            (if (string-contains st "test-module: files don't exist")
+                                                #f
+                                                (error e))))))
+               (test-module path #:just-attempt just-build-freq))
              (printf "SKIP ~a\n" path)))
        (map path->string (find-files ss-file? directory))))
   null)
+  
 
-;(build-freq)
+;(test-all #:just-build-freq #f)
 
 
 ;; test particular modules
-(test-module module-path)
+;(test-module module-path)
+(test-module "../collects/compiler/zo-parse.rkt")
 
 ;(test-module "../collects/framework/keybinding-lang.rkt")
 ;(test-module "../collects/frtime/animation/graphics.rkt")
 ;(test-module "../collects/preprocessor/mzpp-run.rkt")
 
 ;(test-module "../collects/html/html.rkt" #:just-attempt #t)
-;(print-freq)
+(print-freq)
 
