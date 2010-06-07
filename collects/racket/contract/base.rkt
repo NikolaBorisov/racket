@@ -26,7 +26,8 @@
              check-procedure
              check-procedure/more
              ->-rngs/c
-             ->-doms/c)
+             ->-doms/c
+             ->?)
  (except-out (all-from-out "private/misc.ss")
              check-between/c
              check-unary-between/c)

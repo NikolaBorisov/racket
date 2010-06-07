@@ -29,6 +29,7 @@ v4 todo:
          (for-syntax syntax/name))
 
 (provide ->
+         ->?
          ->*
          ->d
          case->

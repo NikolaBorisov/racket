@@ -3,6 +3,7 @@
 (require "rand.rkt"
          "generator-base.rkt"
          "guts.rkt"
+         "arrow.rkt"
          racket/list)
 
 (provide
@@ -59,15 +60,44 @@
                           v
                           (boolean?-static n-tests size env)))])))
 
+
+(define (gen-opts have-val want-ctc have-ctc)
+  (append (if (contract-stronger? have-ctc want-ctc)
+              (list (λ () have-val))
+              '())
+          (if (->? have-ctc)
+              (let* ([gens (map contract-struct-generator
+                                (->-doms/c have-ctc))])
+                (if (member #f gens)
+                    '()
+                    (let useful-results ([result-ctcs (->-rngs/c have-ctc)]
+                                         [i 0])
+                      (if (empty? result-ctcs)
+                          '()
+                          (let* ([args (map (λ (g)
+                                              (g 0 0 (list)))
+                                            gens)])
+                            (append (gen-opts (λ ()
+                                                (call-with-values (apply have-val args)
+                                                                  (λ args
+                                                                    (list-ref args i)))) 
+                                              want-ctc 
+                                              (first result-ctcs))
+                                    (useful-results (rest result-ctcs) (+ i 1))))))))
+                '())))
+
 (define (use-env n-tests size env ctc)
   (let ([options (flatten (map (λ (e-i)
-                                 (if (contract-stronger? ctc (env-item-ctc e-i))
-                                     (list (env-item-name e-i))
-                                     (list)))
+                                 ;; contact-stronger? stronger weaker -> #
+                                 (gen-opts (env-item-name e-i)
+                                           ctc
+                                           (env-item-ctc e-i)))
                                env))])
+                                           
     (if (> (length options) 0)
-        (values #t (list-ref options (rand (length options))))
+        (values #t ((list-ref options (rand (length options)))))
         (values #f #f))))
+
 
 
 
