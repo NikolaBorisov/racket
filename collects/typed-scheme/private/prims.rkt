@@ -25,30 +25,31 @@ This file defines two sorts of primitives. All of them are provided into any mod
                      [lambda: λ:]
                      [define-typed-struct/exec define-struct/exec:]))
 
-(require "../utils/utils.ss"
+(require "../utils/utils.rkt"
 	 (for-syntax 
           syntax/parse
 	  syntax/private/util
           scheme/base
           (rep type-rep)
           mzlib/match
-          "parse-type.ss" "annotate-classes.ss"
+          "parse-type.rkt" "annotate-classes.rkt"
           syntax/struct
           syntax/stx
           scheme/struct-info
           (private internal)
 	  (except-in (utils utils tc-utils))
           (env type-name-env)
-          "type-contract.ss"))
+          "type-contract.rkt"
+          "for-clauses.rkt"))
 
 (require (utils require-contract)
-         "colon.ss"
+         "colon.rkt"
          (typecheck internal-forms)
          (except-in mzlib/contract ->)
          (only-in mzlib/contract [-> c->])
          mzlib/struct
-         "base-types.ss"
-         "base-types-extra.ss")
+         "base-types-new.rkt"
+         "base-types-extra.rkt")
 
 (define-for-syntax (ignore stx) (syntax-property stx 'typechecker:ignore #t))
 
@@ -79,7 +80,9 @@ This file defines two sorts of primitives. All of them are provided into any mod
              #:fail-unless (eq? 'opaque (syntax-e #'opaque)) #f
              #:with opt #'(#:name-exists)))
   (syntax-parse stx
-    [(_ lib (~or sc:simple-clause strc:struct-clause oc:opaque-clause) ...)
+    [(_ lib:expr (~or sc:simple-clause strc:struct-clause oc:opaque-clause) ...)
+     (unless (< 0 (length (syntax->list #'(sc ... strc ... oc ...))))
+       (raise-syntax-error #f "at least one specification is required" stx))
      #'(begin 
 	 (require/opaque-type oc.ty oc.pred lib . oc.opt) ...
 	 (require/typed sc.nm sc.ty lib) ... 
@@ -366,15 +369,196 @@ This file defines two sorts of primitives. All of them are provided into any mod
 (define-syntax (do: stx)
   (syntax-parse stx #:literals (:)
     [(_ : ty 
-        ((var:annotated-name init (~optional step:expr #:defaults ([step #'var]))) ...) 
-        (stop?:expr (~optional (~seq finish:expr ...) #:defaults ([(finish 1) #'((void))])))
+        ((var:annotated-name rest ...) ...) 
+        (stop?:expr ret ...)
         c:expr ...)
      (syntax/loc
          stx
-       (let: doloop : ty ([var.name : var.ty init] ...)
-         (if stop?
-             (begin finish ...)
-             (begin c ... (doloop step ...)))))]))
+       (ann (do ((var.ann-name rest ...) ...)
+                (stop? ret ...)
+              c ...)
+            ty))]))
+
+;; we need handle #:when clauses manually because we need to annotate
+;; the type of each nested for
+(define-syntax (for: stx)
+  (syntax-parse stx #:literals (: Void)
+    ;; the annotation is not necessary (always of Void type), but kept
+    ;; for consistency with the other for: macros
+    [(_ (~seq : Void) ...
+        clauses ; no need to annotate the type, it's always Void
+        c:expr ...)
+     (let ((body (syntax-property #'(c ...) 'type-ascription #'Void)))
+       (let loop ((clauses #'clauses))
+         (define-syntax-class for-clause
+           ;; single-valued seq-expr
+           (pattern (var:annotated-name seq-expr:expr)
+                    #:with expand #'(var.ann-name seq-expr))
+           ;; multi-valued seq-expr
+           (pattern ((v:annotated-name ...) seq-expr:expr)
+                    #:with expand #'((v.ann-name ...) seq-expr)))
+         (syntax-parse clauses
+           [(head:for-clause next:for-clause ... #:when rest ...)
+            (syntax-property
+             (quasisyntax/loc clauses
+               (for
+                (head.expand next.expand ...)
+                #,(loop #'(#:when rest ...))))
+             'type-ascription
+             #'Void)]
+           [(head:for-clause ...) ; we reached the end
+            (syntax-property
+             (quasisyntax/loc clauses
+               (for
+                (head.expand ...)
+                #,@body))
+             'type-ascription
+             #'Void)]
+           [(#:when guard) ; we end on a #:when clause
+            (quasisyntax/loc clauses
+              (when guard
+                #,@body))]
+           [(#:when guard rest ...)
+            (quasisyntax/loc clauses
+              (when guard
+                #,(loop #'(rest ...))))])))]))
+
+;; Handling #:when clauses manually, like we do with for: above breaks
+;; the semantics of for/list and co.
+;; We must leave it to the untyped versions of the macros.
+;; However, this means that some uses of these macros with #:when
+;; clauses won't typecheck.
+;; If the only #:when clause is the last clause, inference should work.
+(define-for-syntax (define-for-variant name)
+  (lambda (stx)
+    (syntax-parse stx #:literals (:)
+      [(_ : ty
+          (clause:for-clause ...)
+          c:expr ...)
+       (syntax-property
+        (quasisyntax/loc stx
+         (#,name
+          (clause.expand ... ...)
+          #,@(syntax-property
+              #'(c ...)
+              'type-ascription
+              #'ty)))
+        'type-ascription
+        #'ty)])))
+(define-syntax (define-for-variants stx)
+  (syntax-parse stx
+    [(_ (name untyped-name) ...)
+     (quasisyntax/loc
+         stx
+       (begin (define-syntax name (define-for-variant #'untyped-name)) ...))]))
+;; for/hash{,eq,eqv}:, for/and:, for/first: and for/last:'s expansions
+;; can't currently be handled by the typechecker.
+;; They have been left out of the documentation.
+(define-for-variants
+  (for/list: for/list)
+  (for/hash: for/hash)
+  (for/hasheq: for/hasheq)
+  (for/hasheqv: for/hasheqv)
+  (for/and: for/and)
+  (for/or: for/or)
+  (for/first: for/first)
+  (for/last: for/last))
+
+;; Unlike with the above, the inferencer can handle any number of #:when
+;; clauses with these 2.
+(define-syntax (for/lists: stx)
+  (syntax-parse stx #:literals (:)
+    [(_ : ty
+        ((var:annotated-name) ...)
+        (clause:for-clause ...)
+        c:expr ...)
+     (syntax-property
+      (quasisyntax/loc stx
+        (for/lists (var.ann-name ...)
+          (clause.expand ... ...)
+          #,@(syntax-property
+              #'(c ...)
+              'type-ascription
+              #'ty)))
+      'type-ascription
+      #'ty)]))
+(define-syntax (for/fold: stx)
+  (syntax-parse stx #:literals (:)
+    [(_ : ty
+        ((var:annotated-name init:expr) ...)
+        (clause:for-clause ...)
+        c:expr ...)
+     (syntax-property
+      (quasisyntax/loc stx
+        (for/fold ((var.ann-name init) ...)
+          (clause.expand ... ...)
+          #,@(syntax-property
+              #'(c ...)
+              'type-ascription
+              #'ty)))
+      'type-ascription
+      #'ty)]))
+
+(define-syntax (for*: stx)
+  (syntax-parse stx #:literals (:)
+    [(_ (~seq : Void) ...
+        (clause:for*-clause ...)
+        c:expr ...)
+     (quasisyntax/loc stx
+       (for: (clause.expand ... ...)
+             c ...))]))
+
+;; These expand into code equivalent to the above macros with
+;; interspersed "#:when #t" clauses. As such, they will fail to
+;; typecheck in the same cases. These macros (except for*:) will only
+;; work in very limited cases (usually a single clause), at least
+;; until inference can handle their expansion.
+;; Because of their current very limited usefulness, these are not
+;; currently documented.
+(define-for-syntax (define-for*-variant name)
+  (lambda (stx)
+    (syntax-parse stx #:literals (:)
+      [(_ : ty
+          (clause:for-clause ...)
+          c:expr ...)
+       (syntax-property
+        (quasisyntax/loc stx
+          (#,name (clause.expand ... ...)
+                  c ...))
+        'type-ascription
+        #'ty)])))
+(define-syntax (define-for*-variants stx)
+  (syntax-parse stx
+    [(_ (name no-*-name) ...)
+     (quasisyntax/loc
+         stx
+       (begin (define-syntax name (define-for*-variant #'no-*-name)) ...))]))
+(define-for*-variants
+  (for*/list: for*/list)
+  (for*/hash: for*/hash)
+  (for*/hasheq: for*/hasheq)
+  (for*/hasheqv: for*/hasheqv)
+  (for*/and: for*/and)
+  (for*/or: for*/or)
+  (for*/first: for*/first)
+  (for*/last: for*/last))
+
+(define-for-syntax (define-for*-folding-variant name)
+  (lambda (stx)
+    (syntax-parse stx #:literals (:)
+      [(_ : ty
+          (var ...)
+          (clause:for*-clause ...)
+          c:expr ...)
+       (quasisyntax/loc stx
+         (#,name : ty
+           (var ...)
+           (clause.expand ... ...)
+           c ...))])))
+
+;; Like for/lists: and for/fold:, the inferencer can handle these correctly.
+(define-syntax for*/lists: (define-for*-folding-variant #'for/lists:))
+(define-syntax for*/fold:  (define-for*-folding-variant #'for/fold:))
 
 (define-syntax (provide: stx)
   (syntax-parse stx

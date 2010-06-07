@@ -1,4 +1,4 @@
-#lang scheme/base
+#lang racket/base
 
 (provide define/chk 
          to-img 
@@ -16,13 +16,13 @@
          check-mode/color-combination)
 
 (require htdp/error
-         scheme/class
+         racket/class
          lang/posn
-         scheme/gui/base
+         racket/gui/base
          "../../mrlib/image-core.ss"
          (prefix-in cis: "../../mrlib/cache-image-snip.ss")
-         (for-syntax scheme/base
-                     scheme/list))
+         (for-syntax racket/base
+                     racket/list))
 
 ;                                                                                                 
 ;                                                                                                 
@@ -183,7 +183,9 @@
      arg]
     [(font-size)
      (check-arg fn-name (and (integer? arg) (<= 1 arg 255)) 'font-size i arg)
-     arg]
+     (if (exact? arg)
+         arg
+         (inexact->exact arg))]
     [(face)
      (check-arg fn-name (or (not arg) (string? arg)) 'face i arg)
      arg]

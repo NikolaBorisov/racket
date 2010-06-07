@@ -253,7 +253,7 @@
 
   (define omitable (make-style #f '(omitable)))
 
-  (define (gen-typeset c multi-line? prefix1 prefix suffix color? expr?)
+  (define (gen-typeset c multi-line? prefix1 prefix suffix color? expr? elem-wrap)
     (let* ([c (syntax-ize c 0 #:expr? expr?)]
            [content null]
            [docs null]
@@ -270,7 +270,10 @@
            [line (or (syntax-line first) 0)])
       (define (finish-line!)
         (when multi-line?
-          (set! docs (cons (make-paragraph omitable (reverse content))
+          (set! docs (cons (make-paragraph omitable 
+                                           (if (null? content)
+                                               (list (hspace 1))
+                                               (reverse content)))
                            docs))
           (set! content null)))
       (define out
@@ -306,13 +309,14 @@
                     (out prefix cls))
                   (out " " cls))]
              [else
-              (set! content (cons ((if highlight?
-                                       (lambda (c)
-                                         (make-element highlighted-color c))
-                                       values)
-                                   (if (and color? cls)
-                                       (make-element/cache cls v)
-                                       v))
+              (set! content (cons (elem-wrap
+                                   ((if highlight?
+                                        (lambda (c)
+                                          (make-element highlighted-color c))
+                                        values)
+                                    (if (and color? cls)
+                                        (make-element/cache cls v)
+                                        v)))
                                   content))
               (set! dest-col (+ dest-col len))]))]))
       (define advance
@@ -369,7 +373,7 @@
                                                      (if val? value-color #f)
                                                      (list
                                                       (make-element/cache (if val? value-color paren-color) '". ")
-                                                      (typeset a #f "" "" "" (not val?) expr?)
+                                                      (typeset a #f "" "" "" (not val?) expr? elem-wrap)
                                                       (make-element/cache (if val? value-color paren-color) '" ."))
                                                      (+ (syntax-span a) 4)))
                                                   (list (syntax-source a)
@@ -660,7 +664,7 @@
            [(hash? (syntax-e c))
             (advance c init-line!)
             (let ([equal-table? (hash-equal? (syntax-e c))]
-                  [eqv-table? (hash-eq? (syntax-e c))]
+                  [eqv-table? (hash-eqv? (syntax-e c))]
                   [quote-depth (to-quoted c expr? quote-depth out color? inc-src-col)])
               (unless (and expr? (zero? quote-depth))
                 (out (if equal-table?
@@ -795,7 +799,7 @@
               (make-table block-color (map list (reverse docs))))
           (make-sized-element #f (reverse content) dest-col))))
 
-  (define (typeset c multi-line? prefix1 prefix suffix color? expr?)
+  (define (typeset c multi-line? prefix1 prefix suffix color? expr? elem-wrap)
     (let* ([c (syntax-ize c 0 #:expr? expr?)]
            [s (syntax-e c)])
       (if (or multi-line?
@@ -812,31 +816,38 @@
               (struct-proxy? s)
               (and expr? (or (identifier? c)
                            (keyword? (syntax-e c)))))
-          (gen-typeset c multi-line? prefix1 prefix suffix color? expr?)
+          (gen-typeset c multi-line? prefix1 prefix suffix color? expr? elem-wrap)
           (typeset-atom c 
                         (letrec ([mk
                                   (case-lambda 
                                    [(elem color)
                                     (mk elem color (or (syntax-span c) 1))]
                                    [(elem color len)
-                                    (if (and (string? elem)
-                                             (= len (string-length elem)))
-                                        (make-element/cache (and color? color) elem)
-                                        (make-sized-element (and color? color) elem len))])])
+                                    (elem-wrap
+                                     (if (and (string? elem)
+                                              (= len (string-length elem)))
+                                         (make-element/cache (and color? color) elem)
+                                         (make-sized-element (and color? color) elem len)))])])
                           mk)
                         color? 0 expr?))))
   
   (define (to-element c #:expr? [expr? #f])
-    (typeset c #f "" "" "" #t expr?))
+    (typeset c #f "" "" "" #t expr? values))
 
   (define (to-element/no-color c #:expr? [expr? #f])
-    (typeset c #f "" "" "" #f expr?))
+    (typeset c #f "" "" "" #f expr? values))
 
-  (define (to-paragraph c #:expr? [expr? #f])
-    (typeset c #t "" "" "" #t expr?))
+  (define (to-paragraph c 
+                        #:expr? [expr? #f] 
+                        #:color? [color? #t]
+                        #:wrap-elem [elem-wrap (lambda (e) e)])
+    (typeset c #t "" "" "" color? expr? elem-wrap))
 
-  (define ((to-paragraph/prefix pfx1 pfx sfx) c #:expr? [expr? #f])
-    (typeset c #t pfx1 pfx sfx #t expr?))
+  (define ((to-paragraph/prefix pfx1 pfx sfx) c 
+           #:expr? [expr? #f] 
+           #:color? [color? #t]
+           #:wrap-elem [elem-wrap (lambda (e) e)])
+    (typeset c #t pfx1 pfx sfx color? expr? elem-wrap))
 
   (begin-for-syntax 
    (define-struct variable-id (sym) 

@@ -46,7 +46,7 @@ at least theoretically.
 					  (string-join
 					   (list "typed-scheme" 
 						 (symbol->string (syntax-e #'nm))
-						 (string-append (symbol->string (syntax-e id)) ".ss"))
+						 (string-append (symbol->string (syntax-e id)) ".rkt"))
 					   "/")
 					  id id))
                                       id id))
@@ -67,7 +67,7 @@ at least theoretically.
 					  (string-join
 					   (list "typed-scheme" 
 						 (symbol->string (syntax-e #'nm))
-						 (string-append (symbol->string (syntax-e id)) ".ss"))
+						 (string-append (symbol->string (syntax-e id)) ".rkt"))
 					   "/")
 					  id id))))
                                    (syntax->list #'(id ...)))])
@@ -139,15 +139,12 @@ at least theoretically.
   print-type* print-filter* print-latentfilter* print-object* print-latentobject*
   print-pathelem*)
 
-(define pseudo-printer
-  (lambda (s port mode)
-    (parameterize ([current-output-port port]
-                   [show-sharing #f]
-                   [booleans-as-true/false #f]
-                   [constructor-style-printing #t])
-      (newline)
-      (pretty-print (print-convert s))
-      (newline))))
+(define (pseudo-printer s port mode)
+  (parameterize ([current-output-port port]
+                 [show-sharing #f]
+                 [booleans-as-true/false #f]
+                 [constructor-style-printing #t])
+    (pretty-print (print-convert s))))
 
 (define custom-printer (make-parameter #t))
   
@@ -162,7 +159,11 @@ at least theoretically.
 
 ;; turn contracts on and off - off by default for performance.
 (define-for-syntax enable-contracts? #f)
-(provide (for-syntax enable-contracts?) p/c w/c cnt d-s/c d/c)
+(provide (for-syntax enable-contracts?) p/c w/c cnt d-s/c d/c d/c/p)
+
+(define-syntax-rule (d/c/p (name . args) c . body)
+  (begin (d/c (name . args) c . body)
+         (p/c [name c])))
 
 ;; these are versions of the contract forms conditionalized by `enable-contracts?'
 (define-syntax p/c
@@ -186,6 +187,8 @@ at least theoretically.
       (make-rename-transformer #'with-contract)
       (lambda (stx)        
         (syntax-parse stx
+          [(_ name (~or #:results #:result) spec . body)
+           #'(let () . body)]
           [(_ name specs . body)
            #'(begin . body)]))))
 

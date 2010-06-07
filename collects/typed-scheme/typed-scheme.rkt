@@ -1,14 +1,14 @@
 #lang scheme/base
 
-(require (rename-in "utils/utils.ss" [infer r:infer]))
+(require (rename-in "utils/utils.rkt" [infer r:infer]))
 
-(require (private base-types with-types)
+(require (private with-types)
          (for-syntax 
           (except-in syntax/parse id)
           scheme/base
           (private type-contract optimize)
           (types utils convenience)
-	  (typecheck typechecker provide-handling)
+	  (typecheck typechecker provide-handling tc-toplevel)
 	  (env type-environments type-name-env type-alias-env)
 	  (r:infer infer)
 	  (utils tc-utils)
@@ -42,7 +42,7 @@
            [with-handlers
                ([(lambda (e) (and catch-errors? (exn:fail? e) (not (exn:fail:syntax? e))))
                  (lambda (e) (tc-error "Internal error: ~a" e))])]
-           [parameterize (;; disable fancy printing
+           [parameterize (;; enable fancy printing?
                           [custom-printer #t]
                           ;; a cheat to avoid units
                           [infer-param infer]
@@ -102,7 +102,9 @@
     [(_ . form)     
      (nest
          ([begin (set-box! typed-context? #t)]
-          [parameterize (;; a cheat to avoid units
+          [parameterize (;; disable fancy printing
+                         [custom-printer #t]
+                         ;; a cheat to avoid units
                          [infer-param infer]
                          ;; this paramter is for parsing types
                          [current-tvars initial-tvar-env]

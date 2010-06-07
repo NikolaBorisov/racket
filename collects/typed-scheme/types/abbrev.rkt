@@ -1,14 +1,15 @@
-#lang scheme
+#lang racket/base
 
-(require "../utils/utils.ss")
+(require "../utils/utils.rkt")
 
 (require (rep type-rep object-rep filter-rep rep-utils)
-	 "printer.ss" "utils.ss"
+	 "printer.rkt" "utils.rkt" "resolve.rkt"
          (utils tc-utils)
          scheme/list
          scheme/match         
          scheme/promise
-         scheme/flonum
+         scheme/flonum (except-in scheme/contract ->* ->)
+         unstable/syntax unstable/mutated-vars
          (prefix-in c: scheme/contract)
          (for-syntax scheme/base syntax/parse)
 	 (for-template scheme/base scheme/contract scheme/promise scheme/tcp scheme/flonum))
@@ -26,8 +27,6 @@
 (define -Param make-Param)
 (define -box make-Box)
 (define -vec make-Vector)
-(define -LFS make-LFilterSet)
-(define-syntax -FS (make-rename-transformer #'make-FilterSet))
 
 (define-syntax *Un
   (syntax-rules ()
@@ -43,7 +42,7 @@
   (foldr -pair (-val '()) l))
 
 (define (untuple t)
-  (match t
+  (match (resolve t)
     [(Value: '()) null]
     [(Pair: a b) (cond [(untuple b) => (lambda (l) (cons a l))]
                        [else #f])]
@@ -62,8 +61,8 @@
        #'(app untuple (? values elem-pats))])))
 
 
-(d/c (-result t [f -no-lfilter] [o -no-lobj])
-  (c:->* (Type/c) (LFilterSet? LatentObject?) Result?)
+(d/c (-result t [f -no-filter] [o -no-obj])
+  (c:->* (Type/c) (FilterSet? Object?) Result?)
   (make-Result t f o))
 
 (d/c (-values args)
@@ -115,10 +114,18 @@
 (define -Pathlike* (*Un -String -Path (-val 'up) (-val 'same)))
 (define -Pattern (*Un -Bytes -Regexp -PRegexp -Byte-Regexp -Byte-PRegexp -String))
 
-(define -no-lfilter (make-LFilterSet null null))
-(define -no-filter (make-FilterSet null null))
-(define -no-lobj (make-LEmpty))
+(define -top (make-Top))
+(define -bot (make-Bot))
+(define -no-filter (make-FilterSet -top -top))
 (define -no-obj (make-Empty))
+
+
+(d/c (-FS + -)
+      (c:-> Filter/c Filter/c FilterSet?)
+      (match* (+ -)
+             [((Bot:) _) (make-FilterSet -bot -top)]
+             [(_ (Bot:)) (make-FilterSet -top -bot)]
+             [(+ -) (make-FilterSet + -)]))
 
 (define -car (make-CarPE))
 (define -cdr (make-CdrPE))
@@ -173,15 +180,15 @@
 
 (define top-func (make-Function (list (make-top-arr))))
 
-(d/c (make-arr* dom rng
+(d/c (make-arr* dom rng 
                 #:rest [rest #f] #:drest [drest #f] #:kws [kws null]
-                #:filters [filters -no-lfilter] #:object [obj -no-lobj])
+                #:filters [filters -no-filter] #:object [obj -no-obj])
   (c:->* ((listof Type/c) (or/c Values? ValuesDots? Type/c))
          (#:rest (or/c #f Type/c) 
           #:drest (or/c #f (cons/c Type/c symbol?))
           #:kws (listof Keyword?)
-          #:filters LFilterSet?
-          #:object LatentObject?)
+          #:filters FilterSet?
+          #:object Object?)
          arr?)
   (make-arr dom (if (or (Values? rng) (ValuesDots? rng))
                     rng
@@ -228,10 +235,10 @@
      (make-Function (list (make-arr* dom rng #:drest (cons dty 'dbound) #:filters filters)))]))
 
 (define (->acc dom rng path)
-  (make-Function (list (make-arr* dom rng 
-                                  #:filters (-LFS (list (-not-filter (-val #f) path)) 
-                                                  (list (-filter (-val #f) path)))
-                                  #:object (make-LPath path 0)))))
+  (make-Function (list (make-arr* dom rng
+                                  #:filters (-FS (-not-filter (-val #f) 0 path)
+                                                 (-filter (-val #f) 0 path))
+                                  #:object (make-Path path 0)))))
 
 (define (cl->* . args)
   (define (funty-arities f)
@@ -259,12 +266,29 @@
 (define (-struct name parent flds accs constructor [proc #f] [poly #f] [pred #'dummy] [cert values])
   (make-Struct name parent flds proc poly pred cert accs constructor))
 
-(define (-filter t [p null] [i 0])
-  (make-LTypeFilter t p i))
+(d/c (-filter t i [p null])
+     (c:->* (Type/c name-ref/c) ((listof PathElem?)) Filter/c)
+     (if (or (type-equal? Univ t) (and (identifier? i) (is-var-mutated? i))) 
+         -top
+         (make-TypeFilter t p i)))
 
-(define (-not-filter t [p null] [i 0])
-  (make-LNotTypeFilter t p i))
+(d/c (-not-filter t i [p null])
+     (c:->* (Type/c name-ref/c) ((listof PathElem?)) Filter/c)
+     (if (or (type-equal? (make-Union null) t) (and (identifier? i) (is-var-mutated? i)))
+         -top
+         (make-NotTypeFilter t p i)))
 
+(define (-filter-at t o)
+  (match o
+    [(Path: p i) (-filter t i p)]
+    [_ -top]))
+(define (-not-filter-at t o)
+  (match o
+    [(Path: p i) (-not-filter t i p)]
+    [_ -top]))
+
+(define (asym-pred dom rng filter)
+  (make-Function (list (make-arr* (list dom) rng #:filters filter))))
 
 (d/c make-pred-ty
   (case-> (c:-> Type/c Type/c)
@@ -273,17 +297,23 @@
           (c:-> (listof Type/c) Type/c Type/c integer? (listof PathElem?) Type/c))
   (case-lambda 
     [(in out t n p)
-     (->* in out : (-LFS (list (-filter t p n)) (list (-not-filter t p n))))]
+     (define xs (for/list ([(_ i) (in-indexed (in-list in))]) i))
+     (make-Function
+      (list
+       (make-arr* 
+	in out 
+	#:filters (-FS (-filter t (list-ref xs n) p) (-not-filter t (list-ref xs n) p)))))]
     [(in out t n)
-     (->* in out : (-LFS (list (-filter t null n)) (list (-not-filter t null n))))]
+     (make-pred-ty in out t n null)]
     [(in out t)
-     (make-pred-ty in out t 0)]
-    [(t) (make-pred-ty (list Univ) -Boolean t 0)]))
+     (make-pred-ty in out t 0 null)]
+    [(t) 
+     (make-pred-ty (list Univ) -Boolean t 0 null)]))
 
-(define true-filter (-FS (list) (list (make-Bot))))
-(define false-filter (-FS (list (make-Bot)) (list)))
-(define true-lfilter (-LFS (list) (list (make-LBot))))
-(define false-lfilter (-LFS (list (make-LBot)) (list)))
+(define true-filter (-FS -top -bot))
+(define false-filter (-FS -bot -top))
+(define true-lfilter (-FS -top -bot))
+(define false-lfilter (-FS -bot -top))
 
 (define (opt-fn args opt-args result)
   (apply cl->* (for/list ([i (in-range (add1 (length opt-args)))])                         

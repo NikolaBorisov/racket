@@ -408,11 +408,11 @@ void wxDrop_GetArgs(int *argc, char ***argv, int *in_terminal)
 
     GetStarterInfo();
 
-    /* Open the PLT_MrEd framework resources: */
+    /* Open the GRacket framework resources: */
     {
       CFBundleRef fwBundle;
 
-      fwBundle = CFBundleGetBundleWithIdentifier(CFSTR("org.plt-scheme.PLT_MrEd"));
+      fwBundle = CFBundleGetBundleWithIdentifier(CFSTR("org.racket-lang.GRacket"));
       if (fwBundle) {
 	SInt16 refNum;
 	SInt16 lRefNum;
@@ -433,7 +433,7 @@ void wxDrop_GetArgs(int *argc, char ***argv, int *in_terminal)
 
 #define BUFSIZE 1000
 #define RSRCNAME "starter-info"
-#define EXECNAME "MrEd"
+#define EXECNAME "GRacket"
 
 static CFPropertyListRef getPropertyList()
 {

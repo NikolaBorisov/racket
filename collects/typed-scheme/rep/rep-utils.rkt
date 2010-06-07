@@ -1,11 +1,11 @@
 #lang scheme/base
-(require "../utils/utils.ss")
+(require "../utils/utils.rkt")
 
-(require mzlib/struct 
+(require mzlib/struct mzlib/pconvert
          scheme/match
          syntax/boundmap
-         "free-variance.ss"
-         "interning.ss"
+         "free-variance.rkt"
+         "interning.rkt"
 	 unstable/syntax unstable/match
          mzlib/etc
          scheme/contract         
@@ -181,13 +181,15 @@
                         #`[#,rec-id #,(hash-ref (attribute recs.mapping) k
                                                 #'values)])]
                      [(match-clauses ...)
-                      (hash-map new-ht gen-clause)])
+                      (hash-map new-ht gen-clause)]
+                     [error-msg (quasisyntax/loc stx (error 'tc "no pattern for ~a" #,fold-target))])
          #`(let (let-clauses ...
                  [#,fold-target ty])
              ;; then generate the fold
              #,(quasisyntax/loc stx
                  (match #,fold-target
-                   match-clauses ...))))])))
+                   match-clauses ...
+                   [_ error-msg]))))])))
 
 
 (define-syntax (make-prim-type stx)    
@@ -237,9 +239,7 @@
 
 (make-prim-type [Type #:key #:d dt]
                 [Filter #:d df]
-                [LatentFilter #:d dlf]
                 [Object #:d do] 
-                [LatentObject #:d dlo]
                 [PathElem #:d dpe])
 
 (provide PathElem? (rename-out [Rep-seq Type-seq]
@@ -266,3 +266,19 @@
 
 (define (replace-syntax rep stx)
   (replace-field rep stx 3))
+
+(define (converter v basic sub)
+  (define (gen-constructor sym)
+    (string->symbol (string-append "make-" (substring (symbol->string sym) 7))))
+  (match v
+    [(? (lambda (e) (or (Filter? e)
+                        (Object? e)
+                        (PathElem? e)))
+        (app (lambda (v) (vector->list (struct->vector v))) (list-rest tag seq fv fi stx vals)))
+     `(,(gen-constructor tag) ,@(map sub vals))]
+    [(? Type?
+        (app (lambda (v) (vector->list (struct->vector v))) (list-rest tag seq fv fi stx key vals)))
+     `(,(gen-constructor tag) ,@(map sub vals))]
+    [_ (basic v)]))
+
+(current-print-convert-hook converter)

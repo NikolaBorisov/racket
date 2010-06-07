@@ -1,5 +1,5 @@
 /*
-  MzScheme
+  Racket
   Copyright (c) 2004-2010 PLT Scheme Inc.
   Copyright (c) 2000-2001 Matthew Flatt
 
@@ -23,7 +23,7 @@
   All rights reserved.
 */
 
-/* This file implements the least platform-specific aspects of MzScheme
+/* This file implements the least platform-specific aspects of Racket
    port types. */
 
 #include "schpriv.h"
@@ -1020,7 +1020,7 @@ user_peeked_read(Scheme_Input_Port *port,
   /* FIXME, if possible: the peeked-read procedure should not
      synchronize target_evt more than once. There doesn't seem to
      be a way to enforce this constraint, however, without extra
-     machinery in MzScheme's synchronization. */
+     machinery in Racket's synchronization. */
 
   a[0] = scheme_make_integer(size);
   a[1] = unless_evt;
@@ -4085,7 +4085,7 @@ static Scheme_Object *do_load_handler(void *data)
   Scheme_Config *config = lhd->config;
   Scheme_Object *last_val = scheme_void, *obj, **save_array = NULL;
   Scheme_Env *genv;
-  int save_count = 0, got_one = 0, as_module;
+  int save_count = 0, got_one = 0, as_module, check_module_name = 0;
 
   while ((obj = scheme_internal_read(port, lhd->stxsrc, 1, 0, 0, 0, 0, -1, NULL, 
                                      NULL, NULL, lhd->delay_load_info))
@@ -4108,10 +4108,12 @@ static Scheme_Object *do_load_handler(void *data)
 
       m = scheme_extract_compiled_module(SCHEME_STX_VAL(d));
       if (m) {
-	if (!SAME_OBJ(SCHEME_PTR_VAL(m->modname), lhd->expected_module)) {
-	  other = m->modname;
-	  d = NULL;
-	}
+        if (check_module_name) {
+          if (!scheme_resolved_module_path_value_matches(m->modname, lhd->expected_module)) {
+            other = m->modname;
+            d = NULL;
+          }
+        }
       } else {
 	if (!SCHEME_STX_PAIRP(d))
 	  d = NULL;
@@ -4126,8 +4128,10 @@ static Scheme_Object *do_load_handler(void *data)
 	    else {
 	      a = SCHEME_STX_CAR(d);
 	      other = SCHEME_STX_VAL(a);
-	      if (!SAME_OBJ(other, lhd->expected_module))
-		d = NULL;
+              if (check_module_name) {
+                if (!SAME_OBJ(other, lhd->expected_module))
+                  d = NULL;
+              }
 	    }
 	  }
 	}
@@ -4135,8 +4139,9 @@ static Scheme_Object *do_load_handler(void *data)
 
       /* If d is NULL, shape was wrong */
       if (!d) {
+        Scheme_Object *err_msg;
 	if (!other || !SCHEME_SYMBOLP(other))
-	  other = scheme_make_byte_string("something else");
+	  err_msg = scheme_make_byte_string("something else");
 	else {
 	  char *s, *t;
 	  long len, slen;
@@ -4151,7 +4156,7 @@ static Scheme_Object *do_load_handler(void *data)
 	  s[len + slen] = '\'';
 	  s[len + slen + 1]= 0;
 
-	  other = scheme_make_sized_byte_string(s, len + slen + 1, 0);
+	  err_msg = scheme_make_sized_byte_string(s, len + slen + 1, 0);
 	}
 
         {
@@ -4160,7 +4165,7 @@ static Scheme_Object *do_load_handler(void *data)
           scheme_raise_exn(MZEXN_FAIL,
                            "default-load-handler: expected a `module' declaration for `%S', found: %T in: %V",
                            lhd->expected_module,
-                           other,
+                           err_msg,
                            ip->name);
         }
 

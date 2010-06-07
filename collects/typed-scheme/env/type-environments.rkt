@@ -1,10 +1,10 @@
 #lang scheme/base  
 
 (require scheme/contract
-         (prefix-in r: "../utils/utils.ss")
-         scheme/match (r:rep filter-rep rep-utils) unstable/struct
+         (prefix-in r: "../utils/utils.rkt")
+         scheme/match (r:rep filter-rep rep-utils type-rep) unstable/struct
          (except-in (r:utils tc-utils) make-env)
-         (r:typecheck tc-metafunctions))
+         #;(r:typecheck tc-metafunctions))
 
 (provide current-tvars
          extend
@@ -37,7 +37,7 @@
     [(struct env (eq? l props))
     (make-env eq? (filter f l) props)]))
 
-(define (make-empty-env p?) (make env p? null null))
+(define (make-empty-env p?) (make-env p? null null))
 
 ;; the initial type variable environment - empty
 ;; this is used in the parsing of types
@@ -49,25 +49,25 @@
 ;; the environment for types of ... variables
 (define dotted-env (make-parameter (make-empty-env free-identifier=?)))
 
-(define/contract (env-map f e)
+(r:d/c (env-map f e)
   ((pair? . -> . pair?) env? . -> . env?)
-  (make env (env-eq? e) (map f (env-l e)) (env-props e)))
+  (make-env (env-eq? e) (map f (env-l e)) (env-props e)))
 
 ;; extend that works on single arguments
 (define (extend e k v) 
   (match e
-    [(struct env (f l p)) (make env f (cons (cons k v) l) p)]
+    [(struct env (f l p)) (make-env f (cons (cons k v) l) p)]
     [_ (int-err "extend: expected environment, got ~a" e)]))
 
 (define (extend-env ks vs e)
   (match e
-    [(struct env (f l p)) (make env f (append (map cons ks vs) l) p)]
+    [(struct env (f l p)) (make-env f (append (map cons ks vs) l) p)]
     [_ (int-err "extend-env: expected environment, got ~a" e)]))
 
 (define (replace-props e props)
   (match e
     [(struct env (f l p))
-     (make env f l props)]))
+     (make-env f l props)]))
 
 (define (lookup e key fail)
   (match e
@@ -95,4 +95,4 @@
   (syntax-rules ()
     [(_ i t v . b) (parameterize ([dotted-env (extend/values (list i) (list (cons t v)) (dotted-env))]) . b)]))
 
-(provide/contract [make-empty-env ((-> any/c any/c any/c) . -> . env?)])
+(r:p/c [make-empty-env ((-> any/c any/c any/c) . -> . env?)])

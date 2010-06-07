@@ -12,8 +12,10 @@
 
 (provide racketblock RACKETBLOCK racketblock/form
          racketblock0 RACKETBLOCK0 racketblock0/form
+         racketresultblock racketresultblock0
+         RACKETRESULTBLOCK RACKETRESULTBLOCK0
          racketblockelem
-         racketinput
+         racketinput RACKETINPUT
          racketmod
          racket RACKET racket/form racketresult racketid 
          racketmodname
@@ -44,12 +46,38 @@
 (define-code RACKETBLOCK (to-paragraph/prefix (hspace 2) (hspace 2) "")
                          UNSYNTAX)
 (define-code RACKETBLOCK0 to-paragraph UNSYNTAX)
+
+(define (to-result-paragraph v)
+  (to-paragraph v 
+                #:color? #f 
+                #:wrap-elem
+                (lambda (e) (make-element result-color e))))
+(define (to-result-paragraph/prefix a b c)
+  (let ([to-paragraph (to-paragraph/prefix a b c)])
+    (lambda (v)
+      (to-paragraph v 
+                    #:color? #f 
+                    #:wrap-elem
+                    (lambda (e) (make-element result-color e))))))
+
+(define-code racketresultblock0 to-result-paragraph)
+(define-code racketresultblock (to-result-paragraph/prefix (hspace 2) (hspace 2) ""))
+(define-code RACKETRESULTBLOCK (to-result-paragraph/prefix (hspace 2) (hspace 2) "")
+  UNSYNTAX)
+(define-code RACKETRESULTBLOCK0 to-result-paragraph UNSYNTAX)
+
 (define interaction-prompt (make-element 'tt (list "> " )))
 (define-code racketinput
   (to-paragraph/prefix
    (make-element #f (list (hspace 2) interaction-prompt))
    (hspace 4)
    ""))
+(define-code RACKETINPUT
+  (to-paragraph/prefix
+   (make-element #f (list (hspace 2) interaction-prompt))
+   (hspace 4)
+   "")
+  UNSYNTAX)
 
 (define-syntax (racketmod stx)
   (syntax-case stx ()
@@ -65,16 +93,13 @@
                                                      ',#'lang
                                                      (to-element ',#'lang))
                                                    #'(racket lang)))))
-                            #'lang)]
-                   [(file ...)
-                    (if (syntax-e #'filename)
-                        (list
-                         (datum->syntax
-                          #'filename
-                          `(code:comment (unsyntax (t "In \"" ,(syntax-e #'filename) "\":")))
-                          #'filename))
-                        null)])
-       (syntax/loc stx (racketblock file ... modtag rest ...)))]
+                            #'lang)])
+       (if (syntax-e #'filename)
+           (quasisyntax/loc stx
+             (filebox
+              filename
+              #,(syntax/loc stx (racketblock0 modtag rest ...))))
+           (syntax/loc stx (racketblock modtag rest ...))))]
     [(_ lang rest ...)
      (syntax/loc stx (racketmod #:file #f lang rest ...))]))
 

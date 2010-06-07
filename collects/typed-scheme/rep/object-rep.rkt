@@ -1,6 +1,7 @@
 #lang scheme/base
 
-(require scheme/match scheme/contract "rep-utils.ss" "free-variance.ss" "filter-rep.ss")
+(require scheme/match scheme/contract "rep-utils.rkt" "free-variance.rkt" "filter-rep.rkt")
+(provide object-equal?)
 
 (dpe CarPE () [#:fold-rhs #:base])
 (dpe CdrPE () [#:fold-rhs #:base])
@@ -11,17 +12,21 @@
 
 (do Empty () [#:fold-rhs #:base])
 
-(do Path ([p (listof PathElem?)] [v identifier?])
-  [#:intern (list p (hash-id v))]
+(do Path ([p (listof PathElem?)] [v name-ref/c])
+  [#:intern (list p (hash-name v))]
   [#:frees (combine-frees (map free-vars* p)) (combine-frees (map free-idxs* p))]
   [#:fold-rhs (*Path (map pathelem-rec-id p) v)])
 
-;; represents no info about the filters of this expression
+;; represents no info about the object of this expression
 ;; should only be used for parsing type annotations and expected types
 (do NoObject () [#:fold-rhs #:base])
 
+(define (object-equal? o1 o2) (= (Rep-seq o1) (Rep-seq o2)))
+
+#|
 (dlo LEmpty () [#:fold-rhs #:base])
 
 (dlo LPath ([p (listof PathElem?)] [idx index/c])
   [#:frees (combine-frees (map free-vars* p)) (combine-frees (map free-idxs* p))]
   [#:fold-rhs (*LPath (map pathelem-rec-id p) idx)])
+|#

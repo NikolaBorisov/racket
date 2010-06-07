@@ -8,7 +8,7 @@
 Alan Perlis famously quipped ``Lisp programmers know the value of
 everything and the cost of nothing.'' A Racket programmer knows, for
 example, that a @racket[lambda] anywhere in a program produces a value
-that is closed over it lexical environment---but how much does
+that is closed over its lexical environment---but how much does
 allocating that value cost? While most programmers have a reasonable
 grasp of the cost of various operations and data structures at the
 machine level, the gap between the Racket language model and the
@@ -35,7 +35,7 @@ generating bytecode files.
 The bytecode compiler applies all standard optimizations, such as
 constant propagation, constant folding, inlining, and dead-code
 elimination. For example, in an environment where @racket[+] has its
-usual binding, the expression @racket[(let ([x 1][y (lambda () 4)]) (+
+usual binding, the expression @racket[(let ([x 1] [y (lambda () 4)]) (+
 1 (y)))] is compiled the same as the constant @racket[5].
 
 On some platforms, bytecode is further compiled to native code via a
@@ -326,7 +326,7 @@ run-time representation of functions that contain free variables.
 For example,
 
 @racketblock[
-(let loop ([n 40000000][prev-thunk (lambda () #f)])
+(let loop ([n 40000000] [prev-thunk (lambda () #f)])
   (if (zero? n)
       (prev-thunk)
       (loop (sub1 n)
@@ -340,7 +340,7 @@ The compiler can eliminate many closures automatically. For example,
 in
 
 @racketblock[
-(let loop ([n 40000000][prev-val #f])
+(let loop ([n 40000000] [prev-val #f])
   (let ([prev-thunk (lambda () n)])
     (if (zero? n)
         prev-val

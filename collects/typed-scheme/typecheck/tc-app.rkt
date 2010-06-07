@@ -1,10 +1,11 @@
 #lang scheme/unit
 
-(require (rename-in "../utils/utils.ss" [infer r:infer])
-         "signatures.ss" "tc-metafunctions.ss"
-         "tc-app-helper.ss" "find-annotation.ss"
+(require (rename-in "../utils/utils.rkt" [infer r:infer])
+         "signatures.rkt" "tc-metafunctions.rkt"
+         "tc-app-helper.rkt" "find-annotation.rkt"
+         "tc-subst.rkt"
          syntax/parse scheme/match mzlib/trace scheme/list 
-	 unstable/sequence
+	 unstable/sequence unstable/debug
          ;; fixme - don't need to be bound in this phase - only to make syntax/parse happy
          scheme/bool
          (only-in racket/private/class-internal make-object do-make-object)
@@ -21,7 +22,7 @@
          '#%paramz
          (for-template 
           (only-in '#%kernel [apply k:apply])
-          "internal-forms.ss" scheme/base scheme/bool '#%paramz
+          "internal-forms.rkt" scheme/base scheme/bool '#%paramz
           (only-in racket/private/class-internal make-object do-make-object)))
 
 (import tc-expr^ tc-lambda^ tc-dots^ tc-let^)
@@ -53,36 +54,24 @@
         (alt equal? equal?-able)))
   (match* ((single-value v1) (single-value v2))
     [((tc-result1: t _ o) (tc-result1: (Value: (? ok? val))))
-     (ret -Boolean (apply-filter (make-LFilterSet (list (make-LTypeFilter (-val val) null 0)) (list (make-LNotTypeFilter (-val val) null 0))) t o))]
+     (ret -Boolean
+	  (-FS (-filter-at (-val val) o)
+	       (-not-filter-at (-val val) o)))]
     [((tc-result1: (Value: (? ok? val))) (tc-result1: t _ o))
-     (ret -Boolean (apply-filter (make-LFilterSet (list (make-LTypeFilter (-val val) null 0)) (list (make-LNotTypeFilter (-val val) null 0))) t o))]
+     (ret -Boolean
+	  (-FS (-filter-at (-val val) o)
+	       (-not-filter-at (-val val) o)))]
     [((tc-result1: t _ o)
-      (and (? (lambda _ (free-identifier=? #'member comparator)))
-           (tc-result1: (app untuple (list (and ts (Value: _)) ...)))))
+      (or (and (? (lambda _ (free-identifier=? #'member comparator)))
+	       (tc-result1: (app untuple (list (and ts (Value: _)) ...))))
+	  (and (? (lambda _ (free-identifier=? #'memv comparator)))
+	       (tc-result1: (app untuple (list (and ts (Value: (? eqv?-able))) ...))))
+	  (and (? (lambda _ (free-identifier=? #'memq comparator)))
+	       (tc-result1: (app untuple (list (and ts (Value: (? eq?-able))) ...))))))
      (let ([ty (apply Un ts)])
        (ret (Un (-val #f) t) 
-            (apply-filter 
-             (make-LFilterSet (list (make-LTypeFilter ty null 0))
-                              (list (make-LNotTypeFilter ty null 0)))
-             t o)))]
-    [((tc-result1: t _ o)
-      (and (? (lambda _ (free-identifier=? #'memv comparator)))
-           (tc-result1: (app untuple (list (and ts (Value: (? eqv?-able))) ...)))))
-     (let ([ty (apply Un ts)])
-       (ret (Un (-val #f) t) 
-            (apply-filter 
-             (make-LFilterSet (list (make-LTypeFilter ty null 0))
-                              (list (make-LNotTypeFilter ty null 0)))
-             t o)))]
-    [((tc-result1: t _ o)
-      (and (? (lambda _ (free-identifier=? #'memq comparator)))
-           (tc-result1: (app untuple (list (and ts (Value: (? eq?-able))) ...)))))
-     (let ([ty (apply Un ts)])
-       (ret (Un (-val #f) t) 
-            (apply-filter 
-             (make-LFilterSet (list (make-LTypeFilter ty null 0))
-                              (list (make-LNotTypeFilter ty null 0)))
-             t o)))]
+	    (-FS (-filter-at ty o)
+		 (-not-filter-at ty o))))]
     [(_ _) (ret -Boolean)]))
 
 
@@ -426,10 +415,10 @@
   (syntax-parse form
     #:literals (#%plain-app #%plain-lambda letrec-values quote
                 values apply k:apply not list list* call-with-values do-make-object make-object cons
-                andmap ormap reverse extend-parameterization)
+                andmap ormap reverse extend-parameterization vector-ref)
     [(#%plain-app extend-parameterization pmz args ...)
      (let loop ([args (syntax->list #'(args ...))])
-       (if (null? args) Univ
+       (if (null? args) (ret Univ)
            (let* ([p (car args)]
                   [pt (single-value p)]
                   [v (cadr args)]
@@ -439,8 +428,86 @@
                 (check-below vt a)
                 (loop (cddr args))]
                [(tc-result1: t) 
-                (tc-error/expr #:ret (or expected (ret Univ)) "expected Parameter, but got ~a" t)
+                (tc-error/expr #:return (or expected (ret Univ)) "expected Parameter, but got ~a" t)
                 (loop (cddr args))]))))]
+    ;; vector-ref on het vectors
+    [(#%plain-app (~and op (~literal vector-ref)) v e:expr)
+     (let ([e-t (single-value #'e)])
+       (match (single-value #'v)
+         [(tc-result1: (and t (HeterogenousVector: es)))
+          (let ([ival (or (syntax-parse #'e [((~literal quote) i:number) (syntax-e #'i)] [_ #f])
+                          (match e-t
+                            [(tc-result1: (Value: (? number? i))) i]
+                            [_ #f]))])
+            (cond [(not ival)
+                   (check-below e-t -Nat)
+                   (if expected 
+                       (check-below (ret (apply Un es)) expected)
+                       (ret (apply Un es)))]
+                  [(and (integer? ival) (exact? ival) (<= 0 ival (sub1 (length es))))
+                   (if expected 
+                       (check-below (ret (list-ref es ival)) expected)
+                       (ret (list-ref es ival)))]
+                  [(not (and (integer? ival) (exact? ival)))
+                   (tc-error/expr #:stx #'e #:return (or expected (ret (Un))) "expected exact integer for vector index, but got ~a" ival)]
+                  [(< ival 0)
+                   (tc-error/expr #:stx #'e #:return (or expected (ret (Un))) "index ~a too small for vector ~a" ival t)]
+                  [(not (<= ival (sub1 (length es))))
+                   (tc-error/expr #:stx #'e #:return (or expected (ret (Un))) "index ~a too large for vector ~a" ival t)]))]
+         [v-ty
+          (let ([arg-tys (list v-ty e-t)])
+            (tc/funapp #'op #'(v e) (single-value #'op) arg-tys expected))]))]
+    [(#%plain-app (~and op (~literal vector-set!)) v e:expr val:expr)
+     (let ([e-t (single-value #'e)])
+       (match (single-value #'v)
+         [(tc-result1: (and t (HeterogenousVector: es)))
+          (let ([ival (or (syntax-parse #'e [((~literal quote) i:number) (syntax-e #'i)] [_ #f])
+                          (match e-t
+                            [(tc-result1: (Value: (? number? i))) i]
+                            [_ #f]))])
+            (cond [(not ival)
+                   (tc-error/expr #:stx #'e
+                                  #:return (or expected (ret -Void))
+                                  "expected statically known index for heterogenous vector, but got ~a" (match e-t [(tc-result1: t) t]))]
+                  [(and (integer? ival) (exact? ival) (<= 0 ival (sub1 (length es))))
+                   (tc-expr/check #'val (ret (list-ref es ival)))
+                   (if expected 
+                       (check-below (ret -Void) expected)
+                       (ret -Void))]
+                  [(not (and (integer? ival) (exact? ival)))
+                   (single-value #'val)
+                   (tc-error/expr #:stx #'e #:return (or expected (ret (Un))) "expected exact integer for vector index, but got ~a" ival)]
+                  [(< ival 0)
+                   (single-value #'val)
+                   (tc-error/expr #:stx #'e #:return (or expected (ret (Un))) "index ~a too small for vector ~a" ival t)]
+                  [(not (<= ival (sub1 (length es))))
+                   (single-value #'val)
+                   (tc-error/expr #:stx #'e #:return (or expected (ret (Un))) "index ~a too large for vector ~a" ival t)]))]
+         [v-ty
+          (let ([arg-tys (list v-ty e-t (single-value #'val))])
+            (tc/funapp #'op #'(v e val) (single-value #'op) arg-tys expected))]))]
+    [(#%plain-app (~and op (~literal vector)) args:expr ...)
+     (match expected
+       [(tc-result1: (Vector: t))
+        (for ([e (in-list (syntax->list #'(args ...)))])
+          (tc-expr/check e (ret t)))
+        expected]
+       [(tc-result1: (HeterogenousVector: ts))
+        (unless (= (length ts) (length (syntax->list #'(args ...))))
+          (tc-error/expr "expected vector with ~a elements, but got ~a" 
+                         (length ts)
+                         (make-HeterogenousVector (map tc-expr/t (syntax->list #'(args ...))))))
+        (for ([e (in-list (syntax->list #'(args ...)))]
+              [t (in-list ts)])
+          (tc-expr/check e (ret t)))
+        expected]
+       [(or #f (tc-result1: _))
+        (let ([arg-tys (map single-value (syntax->list #'(args ...)))])
+            (tc/funapp #'op #'(args ...) (single-value #'op) arg-tys expected))
+        #;#;
+        (tc-error/expr "expected ~a, but got ~a" t (make-HeterogenousVector (map tc-expr/t (syntax->list #'(args ...)))))
+        expected]
+       [_ (int-err "bad expected: ~a" expected)])]
     ;; call-with-values
     [(#%plain-app call-with-values prod con)
      (match (tc/funapp #'prod #'() (single-value #'prod) null #f)
@@ -624,7 +691,7 @@
                                            (= (length d) 
                                               (length (syntax->list #'args))))
                                          dom)
-                                      (Values: (list (Result: v (LFilterSet: '() '()) (LEmpty:))))
+                                      (Values: (list (Result: v (FilterSet: (Top:) (Top:)) (Empty:))))
                                       #f #f (list (Keyword: _ _ #f) ...)))))))
           ;(printf "f dom: ~a ~a~n" (syntax->datum #'f) dom)
           (let ([arg-tys (map (lambda (a t) (tc-expr/check a (ret t))) 
@@ -755,10 +822,12 @@
 
 ;; syntax? syntax? arr? (listof tc-results?) (or/c #f tc-results) [boolean?] -> tc-results?
 (define (tc/funapp1 f-stx args-stx ftype0 argtys expected #:check [check? #t])
+  ;(printf "got to here 0~a~n" args-stx)
   (match* (ftype0 argtys)
     ;; we check that all kw args are optional
-    [((arr: dom (Values: (list (Result: t-r lf-r lo-r) ...)) rest #f (list (Keyword: _ _ #f) ...))
+    [((arr: dom (Values: (and results (list (Result: t-r f-r o-r) ...))) rest #f (and kws (list (Keyword: _ _ #f) ...)))
       (list (tc-result1: t-a phi-a o-a) ...))
+     ;(printf "got to here 1~a~n" args-stx)
      (when check?
        (cond [(and (not rest) (not (= (length dom) (length t-a))))
               (tc-error/expr #:return (ret t-r)
@@ -766,26 +835,25 @@
              [(and rest (< (length t-a) (length dom)))
               (tc-error/expr #:return (ret t-r)
                              "Wrong number of arguments, expected at least ~a and got ~a" (length dom) (length t-a))])
-       (for ([dom-t (if rest (in-sequence-forever dom rest) (in-list dom))] [a (syntax->list args-stx)] [arg-t (in-list t-a)])
+       (for ([dom-t (if rest (in-sequence-forever dom rest) (in-list dom))] 
+             [a (in-list (syntax->list args-stx))]
+             [arg-t (in-list t-a)])
          (parameterize ([current-orig-stx a]) (check-below arg-t dom-t))))
-     (let* (;; Listof[Listof[LFilterSet]]
-            [lfs-f (for/list ([lf lf-r])
-                     (for/list ([i (in-indexes dom)])
-                       (split-lfilters lf i)))]
-            ;; Listof[FilterSet]
-            [f-r (for/list ([lfs lfs-f])
-                   (merge-filter-sets 
-                    (for/list ([lf lfs] [t t-a] [o o-a])
-                      (apply-filter lf t o))))]
-            ;; Listof[Object]
-            [o-r (for/list ([lo lo-r])                     
-                   (match lo
-                     [(LPath: pi* i)
-                      (match (object-index o-a i)
-                        [(Path: pi x) (make-Path (append pi* pi) x)]
-                        [_ (make-Empty)])]
-                     [_ (make-Empty)]))])
-       (ret t-r f-r o-r))]
+     ;(printf "got to here 2 ~a ~a ~a ~n" dom names o-a)
+     (let* ([dom-count (length dom)]
+            [arg-count (+ dom-count (if rest 1 0) (length kws))])
+       (let-values
+           ([(o-a t-a) (for/lists (os ts)
+                         ([nm (in-range arg-count)]
+                          [oa (in-sequence-forever (in-list o-a) (make-Empty))]
+                          [ta (in-sequence-forever (in-list t-a) (Un))])
+                         (values (if (>= nm dom-count) (make-Empty) oa)
+                                 ta))])
+         (define-values (t-r f-r o-r)
+           (for/lists (t-r f-r o-r) 
+             ([r (in-list results)])
+             (open-Result r o-a t-a)))
+         (ret t-r f-r o-r)))]
     [((arr: _ _ _ drest '()) _)
      (int-err "funapp with drest args NYI")]
     [((arr: _ _ _ _ kws) _)

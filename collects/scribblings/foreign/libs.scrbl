@@ -1,5 +1,6 @@
 #lang scribble/doc
 @(require "utils.ss"
+          (for-label setup/dirs)
           (for-syntax setup/dirs))
 
 @title{Loading Foreign Libraries}
@@ -39,10 +40,10 @@ If @scheme[path] is @scheme[#f], then the resulting foreign-library
 value represents all libraries loaded in the current process,
 including libraries previously opened with @scheme[ffi-lib].  In
 particular, use @scheme[#f] to access C-level functionality exported
-by the run-time system (as described in @|InsideMzScheme|).
+by the run-time system (as described in @|InsideRacket|).
 
 Note: @scheme[ffi-lib] tries to look for the library file in a few
-places, inluding the PLT libraries (see @scheme[get-lib-search-dirs]),
+places, including the Racket libraries path (see @scheme[get-lib-search-dirs]),
 a relative path, or a system search. When @scheme[version] is a list,
 different versions are tried through each route before continuing the
 search with other routes. However, if @cpp{dlopen} cannot open a

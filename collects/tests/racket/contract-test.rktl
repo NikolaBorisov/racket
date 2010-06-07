@@ -13,7 +13,8 @@
         (namespace-require 'scheme/contract)
         (namespace-require '(only racket/contract/private/arrow procedure-accepts-and-more?))
         (namespace-require 'scheme/class)
-        (namespace-require 'scheme/promise))
+        (namespace-require 'scheme/promise)
+        (namespace-require 'scheme/match))
       n))
   
   (define (contract-eval x)
@@ -685,6 +686,23 @@
    '((contract (->* () () (values integer? char?))
                (λ () (values 1 2))
                'pos 'neg)))
+  
+  (test/spec-passed
+   'contract-arrow-star-optional24
+   '(let ()
+      (define (statement? s)
+        (and (string? s)
+             (> (string-length s) 3)))
+      (define statement/c (flat-contract statement?))
+      
+      (define new-statement
+        (make-keyword-procedure
+         (λ (kws kw-args . statement)
+           (format "kws=~s  kw-args=~s  statement=~s" kws kw-args statement))))
+      
+      (contract (->* (statement/c) (#:s string?) statement/c)
+                new-statement
+                'pos 'neg)))
   
   (test/spec-passed
    'contract-arrow-star-keyword-ordering
@@ -2859,6 +2877,40 @@
                             #:mutable #:transparent
                             #:property prop:custom-write
                             (lambda (a b c) (void))))
+  
+  (test/spec-passed/result
+   'define-struct/contract24
+   '(let ()
+      (define-struct/contract point
+        ([x number?] [y number?])
+        #:transparent)
+      (define-struct/contract (color-point point)
+        ([c symbol?])
+        #:transparent)
+      
+      (match (make-color-point 1 2 'red)
+        [(struct color-point [dx dy color])
+         (list dx dy color)]
+        [(struct point [dx dy]) (list dx dy)]
+        [v (box v)]))
+   (list 1 2 'red))
+  
+  (test/spec-passed
+   'define-struct/contract25
+   '(let ()
+      (define-struct/contract point
+        ([x number?] [y number?])
+        #:transparent)
+      (point 1 2)))
+  
+  (test/spec-failed
+   'define-struct/contract26
+   '(let ()
+      (define-struct/contract point
+        ([x number?] [y number?])
+        #:transparent)
+      (point 1 #t))
+   "top-level")
 ;                                                                                  
 ;                                                                                  
 ;                                                                                  

@@ -313,10 +313,35 @@
     (define/public (set-external-root-url p)
       (set! external-root-url p))
 
+    (define (try-relative-to-external-root dest)
+      (cond
+       [(let ([rel (find-relative-path
+                    (find-doc-dir)
+                    (relative->path (dest-path dest)))])
+          (and (relative-path? rel)
+               rel))
+        => (lambda (rel)
+             (cons
+              (url->string
+               (struct-copy
+                url
+                (combine-url/relative
+                 (string->url external-root-url)
+                 (string-join (map path-element->string
+                                   (explode-path rel))
+                              "/"))))
+              (and (not (dest-page? dest))
+                   (anchor-name (dest-anchor dest)))))]
+       [else #f]))
+
     (define/public (tag->path+anchor ri tag)
       ;; Called externally; not used internally
       (let-values ([(dest ext?) (resolve-get/ext? #f ri tag)])
         (cond [(not dest) (values #f #f)]
+              [(and ext? external-root-url
+                    (try-relative-to-external-root dest))
+               => (lambda (p)
+                    (values (car p) (cdr p)))]
               [(and ext? external-tag-path)
                (values (string->url external-tag-path) (format "~a" (serialize tag)))]
               [else (values (relative->path (dest-path dest))
@@ -366,7 +391,9 @@
                         '(nbsp))))
       (define (toc-item->block t i)
         (define-values (title num) (toc-item->title+num t #f))
-        (define children (part-parts t)) ; note: might be empty
+        (define children  ; note: might be empty
+          (filter (lambda (p) (not (part-style? p 'toc-hidden)))
+                  (part-parts t)))
         (define id (format "tocview_~a" i))
         (define last? (eq? t (last toc-chain)))
         (define expand? (or (and last? 
@@ -435,6 +462,8 @@
                                 (render-table e d ri #f)]
                                [(delayed-block? e)
                                 (loop (delayed-block-blocks e ri))]
+                               [(traverse-block? e)
+                                (loop (traverse-block-block e ri))]
                                [(compound-paragraph? e)
                                 (append-map loop (compound-paragraph-blocks e))]
                                [else null])))
@@ -447,7 +476,8 @@
       #f)
 
     (define/private (render-onthispage-contents d ri top box-class sections-in-toc?)
-      (if (ormap (lambda (p) (part-whole-page? p ri))
+      (if (ormap (lambda (p) (or (part-whole-page? p ri)
+                                 (part-style? p 'toc-hidden)))
                  (part-parts d))
         null
         (let ([nearly-top? (lambda (d) 
@@ -467,7 +497,8 @@
                    (append-map block-targets (nested-flow-blocks e))]
                   [(compound-paragraph? e)
                    (append-map block-targets (compound-paragraph-blocks e))]
-                  [(delayed-block? e) null]))
+                  [(delayed-block? e) null]
+                  [(traverse-block? e) (block-targets (traverse-block-block e ri))]))
           (define (para-targets para)
             (let loop ([a (paragraph-content para)])
               (cond
@@ -476,6 +507,7 @@
                 [(toc-element? a) (list a)]
                 [(element? a) (loop (element-content a))]
                 [(delayed-element? a) (loop (delayed-element-content a ri))]
+                [(traverse-element? a) (loop (traverse-element-content a ri))]
                 [(part-relative-element? a) (loop (part-relative-element-content a ri))]
                 [else null])))
           (define  (table-targets table)
@@ -495,7 +527,10 @@
                   (if (nearly-top? d) null (list (cons d prefixes)))
                   ;; get internal targets:
                   (map (lambda (v) (cons v prefixes)) (append-map block-targets (part-blocks d)))
-                  (map (lambda (p) (if (part-whole-page? p ri) null (flatten p prefixes #f)))
+                  (map (lambda (p) (if (or (part-whole-page? p ri) 
+                                           (part-style? p 'toc-hidden))
+                                       null 
+                                       (flatten p prefixes #f)))
                        (part-parts d)))))))
           (define any-parts? (ormap (compose part? car) ps))
           (if (null? ps)
@@ -620,7 +655,7 @@
                                   style-extra-files))
                    ,(scribble-js-contents script-file (lookup-path script-file alt-paths)))
                  (body ([id ,(or (extract-part-body-id d ri)
-                                 "scribble-plt-scheme-org")])
+                                 "scribble-racket-lang-org")])
                    ,@(render-toc-view d ri)
                    (div ([class "maincolumn"])
                      (div ([class "main"])
@@ -1225,7 +1260,6 @@
            [(rang) '(8250)]
            [else (list i)])]
         [else 
-         (error "bad")
          (log-error (format "Unreocgnized element in content: ~e" i))
          (list (format "~s" i))]))
     
@@ -1301,8 +1335,11 @@
 
     (define/override (include-navigation?) #t)
 
-    (define/override (collect ds fns)
-      (super collect ds (map (lambda (fn) (build-path fn "index.html")) fns)))
+    (define/override (collect ds fns fp)
+      (super collect 
+             ds 
+             (map (lambda (fn) (build-path fn "index.html")) fns)
+             fp))
 
     (define/override (current-part-whole-page? d)
       (collecting-whole-page))

@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require "blame.ss"
+(require "blame.rkt"
          "generator-base.rkt")
 
 (provide prop:contract

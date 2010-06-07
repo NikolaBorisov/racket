@@ -1,4 +1,4 @@
-#lang scheme
+#lang racket
 
 ;; Note: this queue doesn't implement the capacity restriction
 ;; of McKim and Mitchell's queue but this is easy to add.
@@ -62,7 +62,7 @@
                  (and/c queue? (compose null? items)))]
  
  ;; commands
- [put        (->d ([oldq queue?][i (queue-p? oldq)])
+ [put        (->d ([oldq queue?] [i (queue-p? oldq)])
                   ()
                   [result
                    (and/c 

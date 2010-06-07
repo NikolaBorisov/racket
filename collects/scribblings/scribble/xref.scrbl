@@ -99,6 +99,7 @@ is found in @racket[xref], the result is @racket[#f].}
 
 @defproc[(xref-tag->path+anchor [xref xref?]
                                 [tag tag?]
+                                [#:external-root-url root-url (or/c string? #f) #f]
                                 [#:render% using-render% (subclass?/c render%)
                                            (render-mixin render%)])
          (values (or/c false/c path?)
@@ -111,12 +112,14 @@ result is @racket[#f] if the first result is @racket[#f], and it can
 also be @racket[#f] if the tag refers to a page rather than a specific
 point in a page.
 
+If @racket[root-url] is provided, then references to documentation in
+the main installation are redirected to the given URL.
+
 The optional @racket[using-render%] argument is as for
 @racket[load-xref].}
 
 
-@defproc[(xref-tag->index-entry [xref xref?]
-                                [tag tag?])
+@defproc[(xref-tag->index-entry [xref xref?] [tag tag?])
          (or/c false/c entry?)]{
 
 Extract an @racket[entry] structure that provides addition information

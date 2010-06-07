@@ -1,5 +1,5 @@
 /*
-  MzScheme
+  Racket
   Copyright (c) 2004-2010 PLT Scheme Inc.
   Copyright (c) 1995-2001 Matthew Flatt
  
@@ -100,20 +100,10 @@ struct free_list_entry {
   int count; /* number of items in `elems' */
 };
 
-SHARED_OK static struct free_list_entry *free_list;
-SHARED_OK static int free_list_bucket_count;
-#ifdef MZ_USE_PLACES
-SHARED_OK static mzrt_mutex *free_list_mutex;
-#endif
+THREAD_LOCAL_DECL(static struct free_list_entry *free_list;)
+THREAD_LOCAL_DECL(static int free_list_bucket_count;)
 
-
-void scheme_init_salloc() {
-#ifdef MZ_USE_PLACES
-  mzrt_mutex_create(&free_list_mutex);
-#endif
-}
-
-void scheme_set_stack_base(void *base, int no_auto_statics)
+void scheme_set_stack_base(void *base, int no_auto_statics) XFORM_SKIP_PROC
 {
 #ifdef MZ_PRECISE_GC
   GC_init_type_tags(_scheme_last_type_, 
@@ -172,7 +162,7 @@ static int call_with_basic(void *data)
   return _main(scheme_basic_env(), ma->argc, ma->argv);
 }
 
-int scheme_main_setup(int no_auto_statics, Scheme_Env_Main _main, int argc, char **argv)
+int scheme_main_setup(int no_auto_statics, Scheme_Env_Main _main, int argc, char **argv) XFORM_SKIP_PROC
 {
   Scheme_Main_Data d;
   d._main = _main;
@@ -181,7 +171,7 @@ int scheme_main_setup(int no_auto_statics, Scheme_Env_Main _main, int argc, char
   return scheme_main_stack_setup(no_auto_statics, call_with_basic, &d);
 }
 
-static int do_main_stack_setup(int no_auto_statics, Scheme_Nested_Main _main, void *data)
+static int do_main_stack_setup(int no_auto_statics, Scheme_Nested_Main _main, void *data) 
 {
   void *stack_start;
   int volatile return_code;
@@ -291,7 +281,7 @@ int scheme_main_stack_setup(int no_auto_statics, Scheme_Nested_Main _main, void 
   return do_main_stack_setup(no_auto_statics, _main, data);
 }
 
-void scheme_set_stack_bounds(void *base, void *deepest, int no_auto_statics)
+void scheme_set_stack_bounds(void *base, void *deepest, int no_auto_statics) XFORM_SKIP_PROC
 {
   scheme_set_stack_base(base, no_auto_statics);
 
@@ -302,7 +292,7 @@ void scheme_set_stack_bounds(void *base, void *deepest, int no_auto_statics)
 #endif
 }
 
-extern unsigned long scheme_get_stack_base()
+extern unsigned long scheme_get_stack_base() XFORM_SKIP_PROC
 {
 #if !defined(MZ_PRECISE_GC) && !defined(USE_SENORA_GC)
   if (GC_stackbottom)
@@ -319,7 +309,7 @@ extern unsigned long scheme_get_stack_base()
 
 void scheme_out_of_memory_abort()
 {
-  scheme_log_abort("PLT Scheme virtual machine has run out of memory; aborting");
+  scheme_log_abort("Racket virtual machine has run out of memory; aborting");
   if (more_report_out_of_memory)
     more_report_out_of_memory();
   abort();
@@ -919,10 +909,6 @@ void *scheme_malloc_code(long size)
   long size2, bucket, sz, page_size;
   void *p, *pg, *prev;
 
-# ifdef MZ_USE_PLACES
-  mzrt_mutex_lock(free_list_mutex);
-# endif
-
   if (size < CODE_HEADER_SIZE) {
     /* ensure CODE_HEADER_SIZE alignment 
        and room for free-list pointers */
@@ -986,10 +972,6 @@ void *scheme_malloc_code(long size)
     LOG_CODE_MALLOC(0, printf("allocated %ld (->%ld / %ld)\n", size, size2, bucket));
   }
 
-# ifdef MZ_USE_PLACES
-  mzrt_mutex_unlock(free_list_mutex);
-# endif
-
   return p;
 #else
   return malloc(size); /* good luck! */
@@ -1002,10 +984,6 @@ void scheme_free_code(void *p)
   long size, size2, bucket, page_size;
   int per_page, n;
   void *prev;
-
-# ifdef MZ_USE_PLACES
-  mzrt_mutex_lock(free_list_mutex);
-# endif
 
   page_size = get_page_size();
 
@@ -1079,9 +1057,6 @@ void scheme_free_code(void *p)
       free_page(CODE_PAGE_OF(p), page_size);
     }
   }
-# ifdef MZ_USE_PLACES
-  mzrt_mutex_unlock(free_list_mutex);
-# endif
 
 #else
   free(p);
@@ -1309,7 +1284,7 @@ static void add_finalizer(void *v, void (*f)(void*,void*), void *data,
   if (oldf) {
     if (oldf != do_next_finalization) {
       /* This happens if an extenal use of GC_ routines conflicts with us. */
-      scheme_warning("warning: non-MzScheme finalization on object dropped!");
+      scheme_warning("warning: non-Racket finalization on object dropped!");
     } else {
       *fns_ptr = *(Finalizations **)olddata;
       save_fns_ptr = (Finalizations **)olddata;
@@ -2106,7 +2081,7 @@ Scheme_Object *scheme_dump_gc_stats(int c, Scheme_Object *p[])
 
     tagged = real_tagged;
 
-    scheme_console_printf("Begin MzScheme\n");
+    scheme_console_printf("Begin Racket\n");
     scheme_console_printf("%30.30s %10s %10s %10s %8s - %8s\n",
 			  "TYPE", "COUNT", "ESTM-SIZE", "TRACE-SIZE", 
 			  "LO-LOC", "HI-LOC");
@@ -2161,7 +2136,7 @@ Scheme_Object *scheme_dump_gc_stats(int c, Scheme_Object *p[])
     scheme_console_printf("%30.30s %10ld %10ld %10ld\n",
 			  "total", total_count, total_size, 
 			  total_actual_size);
-    scheme_console_printf("End MzScheme\n");
+    scheme_console_printf("End Racket\n");
 
     scheme_console_printf("Begin Apps\n");
     for (i = 0; i < NUM_RECORDED_APP_SIZES; i++) {

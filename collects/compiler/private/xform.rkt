@@ -476,12 +476,13 @@
         (define recorded-cpp-in
           (and precompiled-header
                (open-input-file (change-suffix precompiled-header #".e"))))
-        (define re:boring #rx#"^(?:(?:[ \t]*)|(?:# .*)|(?:#line .*)|(?:#pragma implementation.*)|(?:#pragma interface.*)|(?:#pragma once)|(?:#pragma warning.*))$")
+        (define re:boring #rx#"^(?:(?:[ \t]*)|(?:# .*)|(?:#line .*)|(?:#pragma implementation.*)|(?:#pragma interface.*)|(?:#pragma once)|(?:#pragma warning.*)|(?:#ident.*))$")
+        (define re:uninteresting #rx#"^(?:(?:[ \t]*)|(?:# .*)|(?:#line .*)|(?:#pragma implementation.*)|(?:#pragma interface.*)|(?:#pragma once)|(?:#pragma GCC diagnostic.*)|(?:#pragma warning.*)|(?:#ident.*))$")
         (define (skip-to-interesting-line p)
           (let ([l (read-bytes-line p 'any)])
             (cond
               [(eof-object? l) l]
-              [(regexp-match-positions re:boring l) (skip-to-interesting-line p)]
+              [(regexp-match-positions re:uninteresting l) (skip-to-interesting-line p)]
               [else l])))
         
         (when recorded-cpp-in
@@ -1734,7 +1735,7 @@
         
         (define (skip-static-line? e)
           ;; We want to skip the really-big static declaration for
-          ;;  the inlined bytecodes in MrEd
+          ;;  the inlined bytecodes in GRacket
           (let loop ([e e][l '(static unsigned char expr)])
             (cond
               [(null? l) #t]
@@ -3379,7 +3380,7 @@
                                        (format " (in ~a)" complain-not-in))
                                    (tok-n (car func))))
                       ;; Lift out function calls as arguments. (Can re-order code.
-                      ;; MzScheme source code must live with this change to C's semantics.)
+                      ;; Racket source code must live with this change to C's semantics.)
                       ;; Calls are replaced by varaibles, and setup code generated that
                       ;; assigns to the variables.
                       (let*-values ([(live-vars)

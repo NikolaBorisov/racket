@@ -165,7 +165,7 @@
     
     (send e insert " by ")
     
-    (insert-url/external-browser "PLT" "http://www.plt-scheme.org/")
+    (insert-url/external-browser "PLT" "http://racket-lang.org/")
     
     (send* e
       (insert ".\n\n")
@@ -360,8 +360,7 @@
               (callback
                (λ (x y)
                  (send-url url)))))])
-    (add (string-constant drscheme-homepage) "http://www.drscheme.org/")
-    (add (string-constant plt-homepage) "http://www.plt-scheme.org/")
+    (add (string-constant plt-homepage) "http://racket-lang.org/")
     (add (string-constant teachscheme!-homepage) "http://www.teach-scheme.org/")
     (add (string-constant how-to-design-programs) "http://www.htdp.org/")
     

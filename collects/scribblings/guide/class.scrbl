@@ -489,7 +489,7 @@ arguments and add none in their @racket[super-new] expressions:
     (define/public (eat food) ....)
     (define/public (grow amt) ....)))
 (define child% (hungry-mixin (picky-mixin person%)))
-(define oliver (new child% [name "Oliver"][age 6]))
+(define oliver (new child% [name "Oliver"] [age 6]))
 ]
 
 Finally, the use of external names for class members (instead of
@@ -617,7 +617,7 @@ aliases.
 Suppose our @racket[fish%] programmer wants to define two class
 extensions, @racket[spots] and @racket[stripes], each of which
 includes a @racket[get-color] method. The fish's spot color should not
-override the stripe color nor vice-versa; instead, a
+override the stripe color nor vice versa; instead, a
 @racket[spots+stripes-fish%] should combine the two colors, which is
 not possible if @racket[spots] and @racket[stripes] are implemented as
 plain mixins. If, however, @racket[spots] and @racket[stripes] are

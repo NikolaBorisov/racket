@@ -167,7 +167,7 @@ int GC_general_register_disappearing_link(void * * link,
     
 #if 1
     /* PLTSCHEME: If wxObjects are sometimes stack-allocated, 
-       MrEd needs this. Keeping it for now just-in-case, though
+       GRacket needs this. Keeping it for now just-in-case, though
        it should be eliminated in the future. */
     if (!GC_base(link))
       return 1;
@@ -897,7 +897,7 @@ int GC_invoke_finalizers()
     static int doing = 0; /* PLTSCHEME */
     struct finalizable_object * curr_fo;
     int count = 0;
-    word bytes_freed_before;
+    word bytes_freed_before = 0;
     DCL_LOCK_STATE;
 
     /* PLTSCHEME: don't allow nested finalizations */

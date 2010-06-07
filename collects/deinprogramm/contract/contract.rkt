@@ -21,7 +21,7 @@
 	 procedure-contract-info? 
 	 procedure-contract-info-arg-contracts procedure-contract-info-return-contract
 	 make-lazy-wrap-info lazy-wrap-info-constructor lazy-wrap-info-raw-accessors
-	 prop:lazy-wrap lazy-wrap-ref
+	 prop:lazy-wrap lazy-wrap? lazy-wrap-ref
 	 make-struct-wrap-contract
 	 check-struct-wraps!
 	 contract=? contract<=?)
@@ -48,10 +48,24 @@
 
 (define-struct contract (name enforcer syntax-promise (arbitrary-promise #:mutable) info-promise <=?-proc =?-proc)
   #:constructor-name really-make-contract
-  #:transparent ; #### for debugging, remove
   #:property prop:equal+hash
   (list (lambda (c1 c2 equal?) (contract=? c1 c2)) ; #### use equal?
-	void void)) ; hash procs
+	(lambda (r recur)
+	  (+ (recur (contract-name r))
+	     (* 33 (recur (contract-enforcer r)))))
+	(lambda (r recur)
+	  (+ (* 33 (recur (contract-name r)))
+	     (recur (contract-enforcer r)))))
+  #:property prop:custom-write
+  (lambda (r port write?)
+    (cond
+     ((contract-name r)
+      => (lambda (name)
+	   (display "#<contract " port)
+	   (display name port)
+	   (display "#>" port)))
+     (else
+      (display "#<contract>" port)))))
 
 (define (make-contract name enforcer syntax-promise
 		       #:arbitrary-promise (arbitrary-promise #f)
@@ -393,7 +407,7 @@
    ref-proc set!-proc))
 
 ; value should be a lazy-wrap-info
-(define-values (prop:lazy-wrap lazy-wrap lazy-wrap-ref)
+(define-values (prop:lazy-wrap lazy-wrap? lazy-wrap-ref)
   (make-struct-type-property 'lazy-wrap))
 
 (define (make-struct-wrap-contract name type-descriptor field-contracts syntax)

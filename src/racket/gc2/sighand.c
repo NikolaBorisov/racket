@@ -26,8 +26,8 @@
 static void launchgdb() {
   pid_t pid = getpid();
   char inbuffer[10];
-  
-  fprintf(stderr, "pid # %i run gdb \"gdb ./mzscheme3m %i\" or kill process.\n", pid, pid);
+
+  fprintf(stderr, "pid # %i run gdb \"gdb ./racket3m %i\" or kill process.\n", pid, pid);
   fflush(stderr);
 
   while(read(fileno(stdin), inbuffer, 10) <= 0){
@@ -187,7 +187,7 @@ static void initialize_signal_handler(GCTYPE *gc)
     memset(&act, 0, sizeof(sigaction));
     act.sa_sigaction = fault_handler;
     sigemptyset(&act.sa_mask);
-    /* In MzScheme, SIGCHLD or SIGINT handling may trigger a write barrier: */
+    /* In Racket, SIGCHLD or SIGINT handling may trigger a write barrier: */
     sigaddset(&act.sa_mask, SIGINT);
     sigaddset(&act.sa_mask, SIGCHLD);
     act.sa_flags = SA_SIGINFO;

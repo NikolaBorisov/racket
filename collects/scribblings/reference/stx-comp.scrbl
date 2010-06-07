@@ -1,21 +1,38 @@
 #lang scribble/doc
 @(require "mz.ss")
 
+@(define stx-eval (make-base-eval))
+@(interaction-eval #:eval stx-eval (require (for-syntax racket/base)))
+
 @title[#:tag "stxcmp"]{Syntax Object Bindings}
 
-@defproc[(bound-identifier=? [a-id syntax?][b-id syntax?]
+@defproc[(bound-identifier=? [a-id syntax?] [b-id syntax?]
                              [phase-level (or/c exact-integer? #f)
                                           (syntax-local-phase-level)])
          boolean?]{
 
 Returns @scheme[#t] if the identifier @scheme[a-id] would bind
-@scheme[b-id] (or vice-versa) if the identifiers were substituted in a
+@scheme[b-id] (or vice versa) if the identifiers were substituted in a
 suitable expression context at the @tech{phase level} indicated by
 @scheme[phase-level], @scheme[#f] otherwise. A @scheme[#f] value for
-@scheme[phase-level] corresponds to the @tech{label phase level}.}
+@scheme[phase-level] corresponds to the @tech{label phase level}.
+
+@examples[
+#:eval stx-eval
+(define-syntax (check stx)
+  (syntax-case stx ()
+    [(_ x y)
+     (if (bound-identifier=? #'x #'y)
+         #'(let ([y 'wrong]) (let ([x 'binds]) y))
+         #'(let ([y 'no-binds]) (let ([x 'wrong]) y)))]))
+(check a a)
+(check a b)
+(define-syntax-rule (check-a x) (check a x))
+(check-a a)
+]}
 
 
-@defproc[(free-identifier=? [a-id syntax?][b-id syntax?]
+@defproc[(free-identifier=? [a-id syntax?] [b-id syntax?]
                             [phase-level (or/c exact-integer? #f)
                                          (syntax-local-phase-level)])
          boolean?]{
@@ -31,18 +48,33 @@ original definition site, and not necessarily to the same
 @scheme[require] or @scheme[provide] site. Due to renaming in
 @scheme[require] and @scheme[provide], or due to a transformer binding
 to a @tech{rename transformer}, the identifiers may return distinct
-results with @scheme[syntax-e].}
+results with @scheme[syntax-e].
 
+@examples[
+#:eval stx-eval
+(define-syntax (check stx)
+  (syntax-case stx ()
+    [(_ x)
+     (if (free-identifier=? #'car #'x)
+         #'(list 'same: x)
+         #'(list 'different: x))]))
+(check car)
+(check mcar)
+(let ([car list])
+  (check car))
+(require (rename-in racket/base [car kar]))
+(check kar)
+]}
 
-@defproc[(free-transformer-identifier=? [a-id syntax?][b-id syntax?]) boolean?]{
+@defproc[(free-transformer-identifier=? [a-id syntax?] [b-id syntax?]) boolean?]{
 
 Same as @scheme[(free-identifier=? a-id b-id (add1 (syntax-local-phase-level)))].}
 
-@defproc[(free-template-identifier=? [a-id syntax?][b-id syntax?]) boolean?]{
+@defproc[(free-template-identifier=? [a-id syntax?] [b-id syntax?]) boolean?]{
 
 Same as @scheme[(free-identifier=? a-id b-id (sub1 (syntax-local-phase-level)))].}
 
-@defproc[(free-label-identifier=? [a-id syntax?][b-id syntax?]) boolean?]{
+@defproc[(free-label-identifier=? [a-id syntax?] [b-id syntax?]) boolean?]{
 
 Same as @scheme[(free-identifier=? a-id b-id #f)].}
 
@@ -182,3 +214,4 @@ Same as @scheme[(identifier-binding id-stx (sub1 (syntax-local-phase-level)))].}
 
 Same as @scheme[(identifier-binding id-stx #f)].}
 
+@close-eval[stx-eval]

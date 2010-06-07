@@ -159,10 +159,10 @@
           #:exists 'truncate/replace)))))
 
 ;; subpath? : path path -> boolean
-;; determines if p1 is a subpath of p2. Both paths must actually exist on the filesystem
+;; determines if p1 is a subpath of p2.
 (define (subpath? p1 p2)
-  (let ([full-p1 (explode-path (normalize-path p1))]
-        [full-p2 (explode-path (normalize-path p2))])
+  (let ([full-p1 (explode-path (simple-form-path p1))]
+        [full-p2 (explode-path (simple-form-path p2))])
     (sublist? full-p1 full-p2 (o2 bytes=? path->bytes))))
 
 ;; o2 : (X X -> Y) (Z -> X) -> (Z Z -> Y)
@@ -264,7 +264,7 @@
 
 ;; ---
 ;; documentation stuff --- loaded on demand so that setup/scribble can be
-;; omitted in the MzScheme distribution
+;; omitted in the Racket distribution
 (define-namespace-anchor anchor)
 
 ;; render : path[fully-expanded scribble file path] path[fully expanded directory] boolean? -> xref?
@@ -284,7 +284,8 @@
                           [dest-dir index-dir]
                           [root-path dest-dir])]
            [doc (dynamic-require `(file ,(path->string src-file)) 'doc)]
-           [ci (send renderer collect (list doc) (list dest-dir))]
+           [fp (send renderer traverse (list doc) (list dest-dir))]
+           [ci (send renderer collect (list doc) (list dest-dir) fp)]
            [xref ((dynamic-require 'setup/xref 'load-collections-xref))]
            [_ ((dynamic-require 'scribble/xref 'xref-transfer-info) renderer ci xref)]
            [ri (send renderer resolve (list doc) (list dest-dir) ci)])
@@ -352,11 +353,11 @@
      (let-values ([(path name must-be-dir?) (split-path dir)])
        (make-planet-archive 
         dir 
-        (build-path (normalize-path (current-directory))
+        (build-path (current-directory)
                     (string-append (path->string name) ".plt"))))]
     [(dir archive-name)
-     (let ([abs-dir (normalize-path dir)])
-       (parameterize ((current-directory (normalize-path dir)))
+     (let ([abs-dir (simple-form-path dir)])
+       (parameterize ((current-directory abs-dir))
          (let ([announcements '()]
                [warnings '()]
                [critical-errors '()])
@@ -428,7 +429,7 @@
             (λ (s) (fprintf (current-error-port) "WARNING:\n\t~a\n" s))
             (reverse warnings))))
        
-       (normalize-path archive-name))]))
+       (simple-form-path archive-name))]))
 
 (define (unpack-planet-archive plt-file target)
   (parameterize ([current-directory target])
@@ -605,12 +606,12 @@
                        (λ (b) (and (list? b) (andmap xexpr? b)))
                        (announce "Package blurb: ~s\n" blurb)
                        (unless blurb
-                         (warn "Package's info.rkt does not contain a blurb field. Without a blurb field, the package will have no description on planet.plt-scheme.org."))]
+                         (warn "Package's info.rkt does not contain a blurb field. Without a blurb field, the package will have no description on planet.racket-lang.org."))]
                       [release-notes 
                        (λ (b) (and (list? b) (andmap xexpr? b)))
                        (announce "Release notes: ~s\n" release-notes)
                        (unless release-notes
-                         (warn "Package's info.rkt does not contain a release-notes field. Without a release-notes field, the package will not have any listed release information on planet.plt-scheme.org beyond the contents of the blurb field."))]
+                         (warn "Package's info.rkt does not contain a release-notes field. Without a release-notes field, the package will not have any listed release information on planet.racket-lang.org beyond the contents of the blurb field."))]
                       [categories
                        (λ (s) (and (list? s) (andmap symbol? s)))
                        (cond
@@ -660,7 +661,7 @@
                                               primary-file bad-files))))])
                          (announce "Primary file: ~a\n" primary-file))
                        (unless primary-file
-                         (warn "Package's info.rkt does not contain a primary-file field. The package's listing on planet.plt-scheme.org will not have a valid require line for your package."))]
+                         (warn "Package's info.rkt does not contain a primary-file field. The package's listing on planet.racket-lang.org will not have a valid require line for your package."))]
                       [required-core-version 
                        core-version?
                        (announce "Required mzscheme version: ~a\n" required-core-version)]
@@ -777,7 +778,8 @@
          this-package-version-name
          this-package-version-owner
          this-package-version-maj
-         this-package-version-min)
+         this-package-version-min
+         (rename-out [this-package-version/proc path->package-version]))
 
 (define-syntax (this-package-version stx)
   (syntax-case stx ()
@@ -815,8 +817,8 @@
 
 ;; contains-dir? : path -> pkg -> boolean
 (define ((contains-dir? srcdir) alleged-superdir-pkg)
-  (let* ([nsrcdir (normalize-path srcdir)]
-         [nsuperdir (normalize-path (car alleged-superdir-pkg))]
+  (let* ([nsrcdir (simple-form-path srcdir)]
+         [nsuperdir (simple-form-path (car alleged-superdir-pkg))]
          [nsrclist (explode-path nsrcdir)]
          [nsuperlist (explode-path nsuperdir)])
     (list-prefix? nsuperlist nsrclist)))

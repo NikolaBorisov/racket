@@ -1,5 +1,5 @@
 /*
-  MzScheme
+  Racket
   Copyright (c) 2004-2010 PLT Scheme Inc.
   Copyright (c) 1995-2001 Matthew Flatt
  
@@ -719,8 +719,8 @@ int scheme_wait_semas_chs(int n, Scheme_Object **o, int just_try, Syncing *synci
 	out_of_a_line = 0;
 	
 	/* If we get the post, we must return WITHOUT BLOCKING. 
-	   MrEd, for example, depends on this special property, which ensures
-	   that the thread can't be broken or killed between
+	   GRacket, for example, depends on this special property, which
+	   ensures that the thread can't be broken or killed between
 	   receiving the post and returning. */
 
 	if (!syncing) {

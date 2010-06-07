@@ -1,5 +1,5 @@
 /*
-  MzScheme
+  Racket
   Copyright (c) 2004-2010 PLT Scheme Inc.
   Copyright (c) 1995-2001 Matthew Flatt
 
@@ -84,6 +84,7 @@ READ_ONLY Scheme_Object *scheme_values_func; /* the function bound to `values' *
 READ_ONLY Scheme_Object *scheme_procedure_p_proc;
 READ_ONLY Scheme_Object *scheme_procedure_arity_includes_proc;
 READ_ONLY Scheme_Object *scheme_void_proc;
+READ_ONLY Scheme_Object *scheme_apply_proc;
 READ_ONLY Scheme_Object *scheme_call_with_values_proc; /* the function bound to `call-with-values' */
 READ_ONLY Scheme_Object *scheme_reduced_procedure_struct;
 READ_ONLY Scheme_Object *scheme_tail_call_waiting;
@@ -234,12 +235,12 @@ scheme_init_fun (Scheme_Env *env)
 
   scheme_procedure_p_proc = o;
 
-  scheme_add_global_constant("apply",
-			     scheme_make_prim_w_arity2(apply,
-						       "apply",
-						       2, -1,
-						       0, -1),
-			     env);
+  REGISTER_SO(scheme_apply_proc);
+  scheme_apply_proc = scheme_make_prim_w_arity2(apply,
+                                                "apply",
+                                                2, -1,
+                                                0, -1);
+  scheme_add_global_constant("apply", scheme_apply_proc, env);
   scheme_add_global_constant("map",
 			     scheme_make_noncm_prim(map,
                                                     "map",
@@ -2646,6 +2647,8 @@ _scheme_tail_apply_to_list (Scheme_Object *rator, Scheme_Object *rands)
   return X_scheme_apply_to_list(rator, rands, 0, 0);
 }
 
+static Scheme_Object *cert_with_specials_k(void);
+
 static Scheme_Object *
 cert_with_specials(Scheme_Object *code, Scheme_Object *mark, Scheme_Env *menv, 
 		   Scheme_Object *orig_code, Scheme_Object *closest_code,
@@ -2655,6 +2658,28 @@ cert_with_specials(Scheme_Object *code, Scheme_Object *mark, Scheme_Env *menv,
 {
   Scheme_Object *prop;
   int next_cadr_deflt = 0;
+
+#ifdef DO_STACK_CHECK
+  {
+# include "mzstkchk.h"
+    {
+      Scheme_Thread *p = scheme_current_thread;
+      Scheme_Object **args;
+      args = MALLOC_N(Scheme_Object*, 6);
+      args[0] = code;
+      args[1] = mark;
+      args[2] = (Scheme_Object *)menv;
+      args[3] = orig_code;
+      args[4] = closest_code;
+      args[5] = (Scheme_Object *)cenv;
+      p->ku.k.p1 = (void *)args;
+      p->ku.k.i1 = phase;
+      p->ku.k.i2 = deflt;
+      p->ku.k.i3 = cadr_deflt;
+      return scheme_handle_stack_overflow(cert_with_specials_k);
+    }
+  }
+#endif
 
   if (SCHEME_STXP(code)) {
     prop = scheme_stx_property(code, certify_mode_symbol, NULL);
@@ -2766,6 +2791,19 @@ cert_with_specials(Scheme_Object *code, Scheme_Object *mark, Scheme_Env *menv,
     return scheme_stx_cert(code, mark, menv, orig_code, NULL, 1);
   else
     return scheme_stx_lift_active_certs(code);
+}
+
+static Scheme_Object *cert_with_specials_k(void)
+{
+  Scheme_Thread *p = scheme_current_thread;
+  Scheme_Object **args = (Scheme_Object **)p->ku.k.p1;
+
+  p->ku.k.p1 = NULL;
+
+  return cert_with_specials(args[0], args[1], (Scheme_Env *)args[2],
+                            args[3], args[4],
+                            (Scheme_Comp_Env *)args[5], p->ku.k.i1,
+                            p->ku.k.i2, p->ku.k.i3);
 }
 
 Scheme_Object *scheme_lift_local_stx_certificates(Scheme_Object *code, 
@@ -3350,6 +3388,8 @@ Scheme_Object *scheme_proc_struct_name_source(Scheme_Object *a)
   Scheme_Object *b;
 
   while (SCHEME_CHAPERONE_PROC_STRUCTP(a)) {
+    if (SCHEME_CHAPERONEP(a))
+      a = SCHEME_CHAPERONE_VAL(a);
     if (scheme_reduced_procedure_struct
         && scheme_is_struct_instance(scheme_reduced_procedure_struct, a)
         && SCHEME_TRUEP(((Scheme_Structure *)a)->slots[2])) {
@@ -3358,8 +3398,6 @@ Scheme_Object *scheme_proc_struct_name_source(Scheme_Object *a)
       /* Either use struct name, or extract proc, depending
          whether it's method-style */
       int is_method;
-      if (SCHEME_CHAPERONEP(a))
-        a = SCHEME_CHAPERONE_VAL(a);
       b = scheme_extract_struct_procedure(a, -1, NULL, &is_method);
       if (!is_method && SCHEME_PROCP(b)) {
         a = b;
@@ -4063,7 +4101,7 @@ static Scheme_Object *apply_chaperone_k(void)
 
 static Scheme_Object *do_apply_chaperone(Scheme_Object *o, int argc, Scheme_Object **argv, Scheme_Object *auto_val)
 {
-  #ifdef DO_STACK_CHECK
+#ifdef DO_STACK_CHECK
   {
 # include "mzstkchk.h"
     {
@@ -4826,7 +4864,7 @@ static void copy_in_mark_stack(Scheme_Thread *p, Scheme_Cont_Mark *cont_mark_sta
       int newcount = needed, oldcount = p->cont_mark_seg_count, npos;
 
       /* Note: we perform allocations before changing p to avoid GC trouble,
-	 since MzScheme adjusts a thread's cont_mark_stack_segments on GC. */
+	 since Racket adjusts a thread's cont_mark_stack_segments on GC. */
       segs = MALLOC_N(Scheme_Cont_Mark *, needed);
 
       for (npos = needed; npos--; ) {
@@ -7695,9 +7733,7 @@ scheme_get_stack_trace(Scheme_Object *mark_set)
 	name = scheme_make_pair(scheme_false, loc);
       else
 	name = scheme_make_pair(SCHEME_VEC_ELS(name)[0], loc);
-    } else if (SCHEME_PAIRP(name)
-               && SAME_TYPE(SCHEME_TYPE(SCHEME_CAR(name)), 
-                            scheme_resolved_module_path_type)) {
+    } else if (SCHEME_PAIRP(name) && SCHEME_RMPP(SCHEME_CAR(name))) {
       /* a resolved module path means that we're running a module body */
       const char *what;
 

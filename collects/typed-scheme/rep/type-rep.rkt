@@ -1,11 +1,11 @@
 #lang scheme/base
-(require "../utils/utils.ss")
+(require "../utils/utils.rkt")
 
 (require (utils tc-utils) 
-	 "rep-utils.ss" "object-rep.ss" "filter-rep.ss" "free-variance.ss"
+	 "rep-utils.rkt" "object-rep.rkt" "filter-rep.rkt" "free-variance.rkt"
          mzlib/trace scheme/match
-         scheme/contract
-         (for-syntax scheme/base))
+         scheme/contract unstable/debug
+         (for-syntax scheme/base syntax/parse))
 
 (define name-table (make-weak-hasheq))
 
@@ -23,7 +23,7 @@
 
 ;; Name = Symbol
 
-;; Type is defined in rep-utils.ss
+;; Type is defined in rep-utils.rkt
 
 ;; t must be a Type
 (dt Scope ([t (or/c Type/c Scope?)]) [#:key (Type-key t)])
@@ -75,6 +75,12 @@
 (dt Vector ([elem Type/c]) 
     [#:frees (make-invariant (free-vars* elem)) (make-invariant (free-idxs* elem))]
     [#:key 'vector])
+
+;; elems are all Types
+(dt HeterogenousVector ([elems (listof Type/c)])
+    [#:frees (make-invariant (combine-frees (map free-vars* elems))) (make-invariant (combine-frees (map free-idxs* elems)))]
+    [#:key 'vector]
+    [#:fold-rhs (*HeterogenousVector (map type-rec-id elems))])
 
 ;; elem is a Type
 (dt Box ([elem Type/c]) [#:frees (make-invariant (free-vars* elem)) (make-invariant (free-idxs* elem))]
@@ -132,9 +138,9 @@
     [#:frees (λ (f) (f ty))]
     [#:fold-rhs (*Keyword kw (type-rec-id ty) required?)])
 
-(dt Result ([t Type/c] [f LFilterSet?] [o LatentObject?])
+(dt Result ([t Type/c] [f FilterSet?] [o Object?])
     [#:frees (λ (frees) (combine-frees (map frees (list t f o))))]
-    [#:fold-rhs (*Result (type-rec-id t) (latentfilter-rec-id f) (latentobject-rec-id o))])
+    [#:fold-rhs (*Result (type-rec-id t) (filter-rec-id f) (object-rec-id o))])
 
 ;; types : Listof[Type]
 (dt Values ([rs (listof Result?)]) 
@@ -151,6 +157,7 @@
          [rest (or/c #f Type/c)] 
          [drest (or/c #f (cons/c Type/c (or/c natural-number/c symbol?)))]
          [kws (listof Keyword?)])
+    [#:intern (list dom rng rest drest kws)]
     [#:frees (combine-frees 
               (append (map (compose flip-variances free-vars*) 
                            (append (if rest (list rest) null)
@@ -315,13 +322,14 @@
     [#:fold-rhs (match (list pos-flds name-flds methods)
                   [(list
                     pos-tys 
-                    (list (list init-names init-tys) ___)
+                    (list (list init-names init-tys reqd) ___)
                     (list (list mname mty) ___))
                    (*Class
                     (map type-rec-id pos-tys)
                     (map list
                          init-names
-                         (map type-rec-id init-tys))
+                         (map type-rec-id init-tys)
+                         reqd)
                     (map list mname (map type-rec-id mty)))])])
 
 ;; cls : Class
@@ -378,16 +386,18 @@
         [(type<? s t) 1]
         [else -1]))
 
-(define ((sub-lf st) e)
-  (latentfilter-case (#:Type st
-                      #:LatentFilter (sub-lf st))
-                     e))
+(define ((sub-f st) e)
+  (filter-case (#:Type st
+                #:Filter (sub-f st)
+                #:PathElem (sub-pe st))
+               e))
 
-(define ((sub-lo st) e)
-  (latentobject-case (#:Type st
-                      #:LatentObject (sub-lo st)
-                      #:PathElem (sub-pe st))
-                     e))
+
+(define ((sub-o st) e)
+  (object-case (#:Type st
+                #:Object (sub-o st)
+                #:PathElem (sub-pe st))
+               e))
 
 (define ((sub-pe st) e)
   (pathelem-case (#:Type st
@@ -400,9 +410,8 @@
   (define (nameTo name count type)
     (let loop ([outer 0] [ty type])
       (define (sb t) (loop outer t))
-      (define slf (sub-lf sb))
       (type-case 
-       (#:Type sb #:LatentFilter (sub-lf sb) #:LatentObject (sub-lo sb))
+       (#:Type sb #:Filter (sub-f sb) #:Object (sub-o sb))
        ty
        [#:F name* (if (eq? name name*) (*B (+ count outer)) ty)]
        ;; necessary to avoid infinite loops
@@ -436,6 +445,9 @@
                 (cdr names)
                 (sub1 count))))))
 
+;(trace abstract-many)
+
+
 ;; instantiate-many : List[Type] Scope^n -> Type 
 ;; where n is the length of types  
 ;; all of the types MUST be Fs
@@ -443,9 +455,9 @@
   (define (replace image count type)
     (let loop ([outer 0] [ty type])
       (define (sb t) (loop outer t))    
-      (define slf (sub-lf sb))  
+      (define sf (sub-f sb))  
       (type-case 
-       (#:Type sb #:LatentFilter slf #:LatentObject (sub-lo sb))
+       (#:Type sb #:Filter sf #:Object (sub-o sb))
        ty
        [#:B idx (if (= (+ count outer) idx)
                     image
@@ -625,15 +637,14 @@
  Mu-unsafe: Poly-unsafe:
  PolyDots-unsafe:
  Mu? Poly? PolyDots?
- arr
- Type? Filter? LatentFilter? Object? LatentObject?
+ Type? Filter? Object?
  Type/c
  Poly-n
  PolyDots-n
  free-vars*
  type-compare type<?
  remove-dups
- sub-lf sub-lo sub-pe
+ sub-f sub-o sub-pe
  Values: Values? Values-rs
  (rename-out [Mu:* Mu:]               
              [Poly:* Poly:]

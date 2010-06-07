@@ -29,7 +29,8 @@
   (cond ((= depth 14)
          (let ((lp (last-position)))
            (if (not (member lp *final*))
-             (set! *final* (cons lp *final*))))
+             (set! *final* (cons lp *final*))
+             #t))
          (set! *answer*
                (cons (cdr (vector->list *sequence*)) *answer*))
          #t)
@@ -77,7 +78,7 @@
  
 ;;; call:  (gogogo 22))
  
-(time (let loop ((n 100000))
+(time (let loop ((n 1000000))
         (if (zero? n)
             'done
             (begin

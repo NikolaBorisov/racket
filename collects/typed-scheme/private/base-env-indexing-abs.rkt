@@ -1,12 +1,12 @@
 #lang scheme
 
 (require
- "../utils/utils.ss"
+ "../utils/utils.rkt"
  scheme/tcp 
  scheme/unsafe/ops
  (only-in rnrs/lists-6 fold-left)
  '#%paramz
- "extra-procs.ss"
+ "extra-procs.rkt"
  (utils tc-utils )
  (types  union convenience)
  (only-in '#%kernel [apply kernel:apply])
@@ -104,7 +104,7 @@
    [build-vector (-poly (a) (-Nat (-Nat . -> . a) . -> . (-vec a)))]
    [vector-set! (-poly (a) (-> (-vec a) -Nat a -Void))]
    [vector-copy! (-poly (a) ((-vec a) -Nat (-vec a) [-Nat -Nat] . ->opt . -Void))]
-   [make-vector (-poly (a) (cl-> [(-Nat) (-vec -Integer)]
+   [make-vector (-poly (a) (cl-> [(-Nat) (-vec -Nat)]
                                  [(-Nat a) (-vec a)]))]
    
    [peek-char
@@ -112,7 +112,7 @@
    [peek-byte
     (cl->* [->opt [-Input-Port -Nat] (Un -Byte (-val eof))])]
    
-   ;; string.ss
+   ;; string.rkt
    [real->decimal-string (N [-Nat] . ->opt .  -String)]
    
    [random (cl-> [(-Nat) -Nat*] [() -Real])]

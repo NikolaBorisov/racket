@@ -1,15 +1,15 @@
 #lang scheme/base
 
-(require "../utils/utils.ss"
+(require "../utils/utils.rkt"
 	 (except-in (rep type-rep) make-arr)
          (rename-in (types convenience union utils) [make-arr* make-arr])
          (utils tc-utils stxclass-util)
          syntax/stx (prefix-in c: scheme/contract)
          syntax/parse
          (env type-environments type-name-env type-alias-env lexical-env)         
-         scheme/match 
+         scheme/match unstable/debug
          (for-template scheme/base "colon.ss")
-         ;; needed for tests
+         ;; needed at this phase for tests
          (combine-in (prefix-in t: "base-types-extra.ss") "colon.ss")
          (for-template (prefix-in t: "base-types-extra.ss")))
 
@@ -99,7 +99,7 @@
     (syntax-parse
         stx
       #:literals (t:Class t:Refinement t:Instance t:List cons t:pred t:-> : case-lambda
-                          t:Rec t:U t:All t:Opaque t:Parameter quote)
+                          t:Rec t:U t:All t:Opaque t:Parameter t:Vector quote)
       [t
        #:declare t (3d Type?)
        (attribute t.datum)]
@@ -136,6 +136,9 @@
       [((~and kw t:List) ts ...)
        (add-type-name-reference #'kw)
        (-Tuple (map parse-type (syntax->list #'(ts ...))))]
+      [((~and kw t:Vector) ts ...)
+       (add-type-name-reference #'kw)
+       (make-HeterogenousVector (map parse-type (syntax->list #'(ts ...))))]
       [((~and kw cons) fst rst)
        (add-type-name-reference #'kw)
        (-pair (parse-type #'fst) (parse-type #'rst))]
@@ -362,8 +365,6 @@
       [((~and kw values) tys ...) 
        (add-type-name-reference #'kw)
        (-values (map parse-type (syntax->list #'(tys ...))))]
-      [(t:All . rest)
-       (parse-all-type stx parse-values-type)]
       [t
        (-values (list (parse-type #'t)))])))
 

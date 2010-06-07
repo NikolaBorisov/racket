@@ -36,7 +36,7 @@ please adhere to these guidelines:
   has changed and needs to be re-translated.  Do not erase the old
   version, it might help us translate the new one.  Do not move it
   either.  Just comment it out and add the short comment.  After the
-  next svn update DrRacket will automatically tell us translators that
+  next git update DrRacket will automatically tell us translators that
   a new string needs to be translated, we will find your comment in
   the file, and know what to do.
 	Some evil evil people might think that, since DrRacket automatically
@@ -133,7 +133,6 @@ please adhere to these guidelines:
  ;;; important urls
  (web-materials "Sítios Web Relacionados") ;; menu item title
  (tool-web-sites "Sítios Web de Ferramentas")   ;; menu item title
- (drscheme-homepage "DrRacket")
  (plt-homepage "Racket")
  (how-to-use-scheme "Como Usar o Scheme") ;; title of a book.
  (teachscheme!-homepage "AprenderScheme!") ;; probably this should be a `word' in all languages
@@ -162,7 +161,7 @@ please adhere to these guidelines:
  (bug-report-submit "Enviar")
  (bug-report-submit-menu-item "Enviar relatório de erro") ;; in Help Menu (drs & help desk)
  (error-sending-bug-report "Erro a Enviar relatório de erro")
- (error-sending-bug-report-expln "Um erro ocorreu enquanto o relatório de erro estava a ser enviado. Se a sua ligação à internet está a funcionar correctamente, por favor visite:\n\n http://bugs.plt-scheme.org/\n\ne envie o erro através do nosso formulário online. Pedimos desculpa pelo incómodo.\n\nA mensagem de erro é:\n~a")
+ (error-sending-bug-report-expln "Um erro ocorreu enquanto o relatório de erro estava a ser enviado. Se a sua ligação à internet está a funcionar correctamente, por favor visite:\n\n http://bugs.racket-lang.org/\n\ne envie o erro através do nosso formulário online. Pedimos desculpa pelo incómodo.\n\nA mensagem de erro é:\n~a")
  (illegal-bug-report "Relatório de Erro Ilegal")
  (pls-fill-in-field "Por favor preencha o campo \"~a\"")
  (malformed-email-address "Endereço de email mal formado")

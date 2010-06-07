@@ -18,13 +18,14 @@ v4 todo:
 
 |#
 
-(require "guts.ss"
-         "opt.ss"
+
+(require "guts.rkt"
+         "opt.rkt"
          "generator-base.rkt"
          racket/stxparam)
 (require (for-syntax racket/base)
-         (for-syntax "opt-guts.ss")
-         (for-syntax "helpers.ss")
+         (for-syntax "opt-guts.rkt")
+         (for-syntax "helpers.rkt")
          (for-syntax syntax/stx)
          (for-syntax syntax/name))
 
@@ -176,10 +177,7 @@ v4 todo:
               (if (->-dom-rest/c ctc)
                   (procedure-accepts-and-more? x l)
                   (procedure-arity-includes? x l))
-              (let-values ([(x-mandatory-keywords x-all-keywords) (procedure-keywords x)])
-                (and (equal? x-mandatory-keywords (->-mandatory-kwds ctc))
-                     (andmap (λ (optional-keyword) (member optional-keyword x-all-keywords))
-                             (->-mandatory-kwds ctc))))
+              (keywords-match (->-mandatory-kwds ctc) (->-optional-kwds ctc) x)
               #t))))
    #:stronger
    (λ (this that)
@@ -1589,15 +1587,20 @@ v4 todo:
 (define (keywords-match mandatory-kwds optional-kwds val)
   (let-values ([(proc-mandatory proc-all) (procedure-keywords val)])
     (and ;; proc accepts all ctc's mandatory keywords
-     (andmap (λ (kwd) (member kwd proc-all))
-             mandatory-kwds)
-     ;; proc's mandatory keywords are still mandatory in ctc
-     (andmap (λ (kwd) (member kwd mandatory-kwds))
-             proc-mandatory)
-     ;; proc accepts (but does not require) ctc's optional keywords
-     (andmap (λ (kwd) (and (member kwd proc-all)
-                           (not (member kwd proc-mandatory))))
-             optional-kwds))))
+
+         (andmap (λ (kwd) (member kwd proc-all))
+                 mandatory-kwds)
+         ;; proc's mandatory keywords are still mandatory in ctc
+         (andmap (λ (kwd) (member kwd mandatory-kwds))
+                 proc-mandatory)
+         ;; proc accepts (but does not require) ctc's optional keywords
+         ;;
+         ;; if proc-all is #f, then proc accepts all keywords and thus
+         ;; this is triviably true (e.g. result of make-keyword-procedure)
+         (or (not proc-all)
+             (andmap (λ (kwd) (and (member kwd proc-all)
+                                   (not (member kwd proc-mandatory))))
+                     optional-kwds)))))
 
 (define (keyword-error-text mandatory-keywords optional-keywords)
   (define (format-keywords-error type kwds)

@@ -177,13 +177,13 @@ flat-contract?]{ Returns a flat contract that requires the
 input to be a between @racket[n] and @racket[m] or equal to
 one of them.}
 
-@defproc[(real-in [n real?][m real?]) flat-contract?]{
+@defproc[(real-in [n real?] [m real?]) flat-contract?]{
 
 Returns a flat contract that requires the input to be a real number
 between @racket[n] and @racket[m], inclusive.}
 
 
-@defproc[(integer-in [j exact-integer?][k exact-integer?]) flat-contract?]{
+@defproc[(integer-in [j exact-integer?] [k exact-integer?]) flat-contract?]{
 
 Returns a flat contract that requires the input to be an exact integer
 between @racket[j] and @racket[k], inclusive.}
@@ -283,7 +283,7 @@ Returns a contract that recognizes non-empty lists whose elements match
 the contract @racket[c]. Beware that when this contract is applied to
 a value, the result is not necessarily @racket[eq?] to the input.}
 
-@defproc[(cons/c [car-c contract?][cdr-c contract?]) contract?]{
+@defproc[(cons/c [car-c contract?] [cdr-c contract?]) contract?]{
 
 Produces a contract the recognizes pairs first and second elements
 match @racket[car-c] and @racket[cdr-c], respectively. Beware that
@@ -1359,6 +1359,25 @@ Extracts the predicate from a flat contract.}
 @defproc[(has-contract? [v any/c]) boolean?]{
   Returns @racket[#t] if @racket[v] is a value that
   has a recorded contract attached to it.
+}
+
+@defproc[(contract-stronger? [x contract?] [y contract?]) boolean?]{
+  Returns @racket[#t] if the contract @racket[x] accepts either fewer 
+  or the same number of values as @racket[y] does.
+
+  This function is conservative, so it may return @racket[#f] when 
+  @racket[x] does, in fact, accept fewer values.
+  
+@examples[#:eval (contract-eval)
+                 (contract-stronger? integer? integer?)
+                 (contract-stronger? (between/c 25 75) (between/c 0 100))
+                 (contract-stronger? (between/c 0 100) (between/c 25 75))
+                 (contract-stronger? (between/c -10 0) (between/c 0 10))
+                 
+                 (contract-stronger? (λ (x) (and (real? x) (<= x (random 10))))
+                                     (λ (x) (and (real? x) (<= x (+ 100 (random 10))))))]
+                 
+                 
 }
 
 @defproc[(contract-first-order-passes? [contract contract?]

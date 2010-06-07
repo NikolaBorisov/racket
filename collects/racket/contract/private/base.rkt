@@ -17,8 +17,8 @@ improve method arity mismatch contract violation error messages?
          racket/stxparam
          unstable/srcloc
          unstable/location
-         "guts.ss"
-         "blame.ss")
+         "guts.rkt"
+         "blame.rkt")
 
 (define-syntax-parameter current-contract-region
   (λ (stx) #'(quote-module-path)))
@@ -50,6 +50,10 @@ improve method arity mismatch contract violation error messages?
      (syntax
       (make-contract
        #:name '(recursive-contract arg)
+       #:first-order
+       (λ (val)
+         (let ([ctc (coerce-contract 'recursive-contract arg)])
+           (contract-first-order-passes? ctc val)))
        #:projection
        (λ (blame)
           (let ([ctc (coerce-contract 'recursive-contract arg)])

@@ -309,6 +309,8 @@ import.}
 @defproc[(module-compiled-language-info [compiled-module-code compiled-module-expression?])
          (or/c #f (vector/c module-path? symbol? any/c))]{
 
+@guidealso["module-runtime-config"]
+
 Returns information intended to reflect the ``language'' of the
 module's implementation as originally attached to the syntax of the
 module's declaration though the @indexed-racket['module-language]
@@ -379,7 +381,7 @@ Like @racket[dynamic-require], but in a @tech{phase} that is @math{1}
 more than the namespace's @tech{base phase}.}
 
 
-@defproc[(module->language-info 
+@defproc[(module->language-info
           [mod (or/c module-path? path? resolved-module-path?)]
           [load? any/c #f])
          (or/c #f (vector/c module-path? symbol? any/c))]{

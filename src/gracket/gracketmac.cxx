@@ -1,6 +1,6 @@
 /*
  * File:        mredmac.cc
- * Purpose:     MrEd MacOS event loop
+ * Purpose:     GRacket MacOS event loop
  * Author:      Matthew Flatt
  * Created:     1996
  * Copyright:   (c) 2004-2010 PLT Scheme Inc.
@@ -173,7 +173,7 @@ static MrQueueElem *first, *last;
  *    region manually (and then must reinstate it when it's
  *    time to handle the event.  ick.
  * 2. high level events. Dispatched immediately, and the
- *    handlers queue work in MzScheme threads.
+ *    handlers queue work in Racket threads.
  * 3. suspendResumeMessage. See comment at top.
  */
 

@@ -5,6 +5,7 @@
 ; Created:      8-Apr-85
 ; Modified:     6-May-85 09:29:22 (Bob Shaw)
 ;               11-Aug-87 (Will Clinger)
+;               4-May-10 (Vincent St-Amour)
 ; Language:     Scheme
 ; Status:       Public Domain
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -51,7 +52,8 @@
       (if (< i n)
           (begin (set! m (+ m 1))
                  (set! i (+ i i))
-                 (loop))))
+                 (loop))
+          #t))
     (cond ((not (= n (expt 2 m)))
            (error "array size not a power of two.")))
     ;; interchange elements in bit-reversed order
@@ -69,7 +71,7 @@
       (let l6 ()
         (cond ((< k j)
                (set! j (- j k))
-               (set! k (/ k 2))
+               (set! k (quotient k 2))
                (l6))))
       (set! j (+ j k))
       (set! i (+ i 1))
@@ -108,7 +110,7 @@
  
 (define (fft-bench)
   (do ((ntimes 0 (+ ntimes 1)))
-      ((= ntimes 1000))
+      ((= ntimes 5000))
       (fft *re* *im*)))
  
 ;;; call:  (fft-bench)

@@ -25,7 +25,7 @@
 
 /* This file defines Racket's main(), which is a jumble of
    platform-specific initialization. The included file "cmdline.inc"
-   implements command-line parsing. (MrEd also uses "cmdline.inc".)
+   implements command-line parsing. (GRacket also uses "cmdline.inc".)
 
    The rest of the source code resides in the `src' subdirectory
    (except for the garbage collector, which is in `gc', `sgc', or
@@ -146,6 +146,7 @@ extern Scheme_Object *scheme_initialize(Scheme_Env *env);
 #endif
 #define GET_INIT_FILENAME get_init_filename
 #define PRINTF printf
+#define CMDLINE_FFLUSH fflush
 #define PROGRAM "Racket"
 #define PROGRAM_LC "racket"
 #define INITIAL_BIN_TYPE "zi"

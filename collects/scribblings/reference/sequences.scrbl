@@ -193,7 +193,7 @@ its value from @scheme[hash] (as opposed to using @scheme[hash] directly
 as a sequence to get the key and value as separate values for each
 element).}
 
-@defproc[(in-directory [dir (or/c #f path-string?)]) sequence?]{
+@defproc[(in-directory [dir (or/c #f path-string?) #f]) sequence?]{
 
 Return a sequence that produces all of the paths for files,
 directories, and links with @racket[dir]. If @racket[dir] is not
@@ -462,11 +462,13 @@ of the generator.
 (introspective-generator)
 ]}
 
-@defproc[(sequence->generator [s sequence?]) (-> any?)]{ Returns a generator
-that returns elements from the sequence, @scheme[s], each time the generator
-is invoked.}
+@defproc[(sequence->generator [s sequence?]) (-> any?)]{
 
-@defproc[(sequence->repeated-generator [s sequence?]) (-> any?)]{ Returns a generator
-that returns elements from the sequence, @scheme[s], similar to
-@scheme[sequence->generator] but looping over the values in the sequence
-when no more values are left.}
+Returns a generator that returns elements from the sequence, @scheme[s],
+each time the generator is invoked.}
+
+@defproc[(sequence->repeated-generator [s sequence?]) (-> any?)]{
+
+Returns a generator that returns elements from the sequence, @scheme[s],
+similar to @scheme[sequence->generator] but looping over the values in
+the sequence when no more values are left.}

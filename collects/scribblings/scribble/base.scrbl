@@ -27,14 +27,17 @@
 
 @title[#:tag "base"]{Base Document Format}
 
-@defmodulelang[scribble/base]{The @racketmodname[scribble/base] language
-provides functions and forms that can be used from code written either
-in Racket or with @elem["@"] expressions.
+@defmodulelang[scribble/base]{The @racketmodname[scribble/base]
+language provides functions and forms that can be used from code
+written either in Racket or with @elem["@"] expressions. It
+essentially extends @racketmodname[racket/base], except that top-level
+forms within a module using the @racketmodname[scribble/base] language
+are treated as document content (like @racketmodname[scribble/doclang]).
 
-The @racketmodname[scribble/base] name can also be used as a
-library with @racket[require], in which case it provides all of the same
-bindings, but without setting the reader or setting the default
-rendering format to the Racket manual format.}
+The @racketmodname[scribble/base] name can also be used as a library
+with @racket[require], in which case it provides only the bindings
+defined in this section, and it also does not set the reader or
+set the default rendering format to the Racket manual format.}
 
 Functions provided by this library, such as @racket[title] and
 @racket[italic], might be called from Racket as
@@ -165,10 +168,18 @@ address-harvesting robots.}
 Produces a @tech{nested flow} whose content is centered.}
 
 
-@defproc[(margin-note [pre-content pre-content?] ...) blockquote?]{
+@defproc[(margin-note [pre-flow pre-flow?] ...) block?]{
 
 Produces a @tech{nested flow} that is typeset in the margin, instead
 of inlined.}
+
+
+@defproc[(margin-note* [pre-content pre-content?] ...) element?]{
+
+Produces an @racket[element] that is typeset in the margin, instead of
+inlined. Unlike @racket[margin-note], @racket[margin-note*] can be
+used in the middle of a paragraph; at the same time, its content is
+constrained to form a single paragraph in the margin.}
 
 
 @defproc[(itemlist [itm item?] ...
@@ -412,8 +423,7 @@ The tag @racket[t] refers to the content form of
 The @tech{decode}d @racket[pre-content] is hyperlinked to @racket[t],
 which is normally defined using @racket[elemtag].}
 
-@defproc[(module-path-prefix->string [mod-path module-path?])
-         string?]{
+@defproc[(module-path-prefix->string [mod-path module-path?]) string?]{
 
 Converts a module path to a string by resolving it to a path, and
 using @racket[path->main-collects-relative].}

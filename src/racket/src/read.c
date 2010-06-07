@@ -1,5 +1,5 @@
 /*
-  MzScheme
+  Racket
   Copyright (c) 2004-2010 PLT Scheme Inc.
   Copyright (c) 1995-2001 Matthew Flatt
 
@@ -23,7 +23,7 @@
   All rights reserved.
 */
 
-/* This file contains the MzScheme reader, including the normal reader
+/* This file contains the Racket reader, including the normal reader
    and the one for .zo files. The normal reader is a recursive-descent
    parser. The really messy part is number parsing, which is in a
    different file, numstr.c. */
@@ -3268,7 +3268,7 @@ read_string(int is_byte, int is_honu_char, Scheme_Object *port,
 }
 
 Scheme_Object *scheme_read_byte_string(Scheme_Object *port)
-/* used by MrEd */
+/* used by GRacket */
 {
   return read_string(1, 0, port,
 		     NULL, 0, 0, 0,
@@ -6198,7 +6198,7 @@ static Scheme_Object *read_lang(Scheme_Object *port,
         buf[len++] = ch;
       } else {
         scheme_read_err(port, stxsrc, line, col, pos, SPAN(port, pos), ch, indentation, 
-                        "read: expected only alphanumberic, `-', `+', `_', or `/'"
+                        "read: expected only alphanumeric, `-', `+', `_', or `/'"
                         " characters for `#%s', found %c",
                         init_ch ? "!" : "lang",
                         ch);
@@ -6212,7 +6212,7 @@ static Scheme_Object *read_lang(Scheme_Object *port,
     scheme_read_err(port, stxsrc, line, col, pos, SPAN(port, pos), ch, indentation, 
                     (((ch == ' ') && !init_ch)
                      ? "read: expected a single space after `#lang'"
-                     : "read: expected a non-empty sequence of alphanumberic, `-', `+', `_', or `/' after `#%s'"),
+                     : "read: expected a non-empty sequence of alphanumeric, `-', `+', `_', or `/' after `#%s'"),
                     init_ch ? "!" : "lang ");
     return NULL;
   }

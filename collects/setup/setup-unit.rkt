@@ -358,7 +358,7 @@
       (let ([deps (with-handlers ([exn:fail? (lambda (x) null)])
                     (with-input-from-file path read))])
         (when (and (pair? deps) (list? deps))
-          (for ([s (cdr deps)])
+          (for ([s (in-list (cddr deps))])
             (unless (and (pair? s)
                          (eq? 'ext (car s)))
               (let ([s (main-collects-relative->path s)])
@@ -404,8 +404,8 @@
         (for ([path paths])
           (let ([full-path (build-path (cc-path cc) path)])
             (when (or (file-exists? full-path) (directory-exists? full-path))
-              (let ([path (find-relative-path (normalize-path (cc-path cc))
-                                              (normalize-path full-path))])
+              (let ([path (find-relative-path (simple-form-path (cc-path cc))
+                                              (simple-form-path full-path))])
                 (let loop ([path path])
                   (let-values ([(base name dir?) (split-path path)])
                     (cond
@@ -522,7 +522,7 @@
              [doing-path (lambda (path)
                            (unless (verbose)
                              (let ([path (normal-case-path (path-only path))])
-                               (unless (hash-ref dir-table path (lambda () #f))
+                               (unless (hash-ref dir-table path #f)
                                  (hash-set! dir-table path #t)
                                  (print-verbose oop path)))))])
         (parameterize ([current-output-port (if (verbose) (current-output-port) (open-output-nowhere))]
@@ -888,7 +888,7 @@
        '())))
 
   (current-library-collection-paths
-   (map simplify-path (current-library-collection-paths)))
+   (map simple-form-path (current-library-collection-paths)))
 
   (setup-printf "version" "~a [~a]" (version) (system-type 'gc))
   (setup-printf "variants" "~a" (string-join (map symbol->string (available-mzscheme-variants)) ", "))

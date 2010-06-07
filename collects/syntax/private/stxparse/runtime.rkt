@@ -439,13 +439,10 @@ An Expectation is one of
          #`(let ([value #,(attribute-mapping-var self)])
              (if (check-syntax '#,(attribute-mapping-depth self) value)
                  value
-                 (raise-syntax-error #f
-                                     "attribute is bound to non-syntax value"
-                                     (quote-syntax
-                                      #,(datum->syntax
-                                         stx
-                                         (attribute-mapping-name self)
-                                         stx)))))))))
+                 (raise-syntax-error
+                  #f
+                  (format "attribute is bound to non-syntax value: ~e" value)
+                  (quote-syntax #,(attribute-mapping-name self)))))))))
 
 ;; check-syntax : nat any -> boolean
 ;; Returns #t if value is a (listof^depth syntax)
@@ -604,41 +601,38 @@ An Expectation is one of
 
 ;; 
 
-(provide phase+
-         check-literal
+(provide check-literal
          free-identifier=?/phases)
-
-(define (phase+ a b)
-  (and (number? a) (number? b) (+ a b)))
 
 ;; check-literal : id phase-level stx -> void
 ;; FIXME: change to normal 'error', if src gets stripped away
 (define (check-literal id phase ctx)
   (unless (identifier-binding id phase)
-    (raise-syntax-error #f "unbound identifier not allowed as literal" ctx id)))
+    (raise-syntax-error #f
+                        (format "literal is unbound in phase ~s" phase)
+                        ctx id)))
 
 ;; free-identifier=?/phases : id phase-level id phase-level -> boolean
 ;; Determines whether x has the same binding at phase-level phase-x
 ;; that y has at phase-level y.
 ;; At least one of the identifiers MUST have a binding (module or lexical)
 (define (free-identifier=?/phases x phase-x y phase-y)
-  (let ([base-phase (syntax-local-phase-level)])
-    (let ([bx (identifier-binding x (phase+ base-phase phase-x))]
-          [by (identifier-binding y (phase+ base-phase phase-y))])
-      (cond [(and (list? bx) (list? by))
-             (let ([modx (module-path-index-resolve (first bx))]
-                   [namex (second bx)]
-                   [phasex (fifth bx)]
-                   [mody (module-path-index-resolve (first by))]
-                   [namey (second by)]
-                   [phasey (fifth by)])
-               (and (eq? modx mody) ;; resolved-module-paths are interned
-                    (eq? namex namey)
-                    (equal? phasex phasey)))]
-            [else
-             ;; One must be lexical (can't be #f, since one must be bound)
-             ;; lexically-bound names bound in only one phase; just compare
-             (free-identifier=? x y)]))))
+  (let ([bx (identifier-binding x phase-x)]
+        [by (identifier-binding y phase-y)])
+    (cond [(and (list? bx) (list? by))
+           (let ([modx (module-path-index-resolve (first bx))]
+                 [namex (second bx)]
+                 [phasex (fifth bx)]
+                 [mody (module-path-index-resolve (first by))]
+                 [namey (second by)]
+                 [phasey (fifth by)])
+             (and (eq? modx mody) ;; resolved-module-paths are interned
+                  (eq? namex namey)
+                  (equal? phasex phasey)))]
+          [else
+           ;; One must be lexical (can't be #f, since one must be bound)
+           ;; lexically-bound names bound in only one phase; just compare
+           (free-identifier=? x y)])))
 
 ;; ----
 

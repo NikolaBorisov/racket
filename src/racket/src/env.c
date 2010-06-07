@@ -1,5 +1,5 @@
 /*
-  MzScheme
+  Racket
   Copyright (c) 2004-2010 PLT Scheme Inc.
   Copyright (c) 1995-2001 Matthew Flatt
 
@@ -355,13 +355,13 @@ Scheme_Env *scheme_engine_instance_init() {
 #ifndef DONT_USE_FOREIGN
   scheme_init_foreign_globals();
 #endif
-  scheme_init_salloc();
   make_kernel_env();
 
 #if defined(MZ_PRECISE_GC) && defined(MZ_USE_PLACES)
   scheme_places_block_child_signal();
 
   GC_switch_out_master_gc();
+
   scheme_spawn_master_place();
 #endif
   
@@ -464,6 +464,11 @@ static Scheme_Env *place_instance_init(void *stack_base, int initial_main_os_thr
 
   scheme_make_thread(stack_base);
 
+#if defined(MZ_PRECISE_GC) && defined(MZ_USE_PLACES)
+  /* each place now has a local symbol table */
+  scheme_init_place_local_symbol_table();
+#endif
+
   {
     Scheme_Object *sym;
     sym = scheme_intern_symbol("mzscheme");
@@ -474,10 +479,6 @@ static Scheme_Env *place_instance_init(void *stack_base, int initial_main_os_thr
 
 #ifdef TIME_STARTUP_PROCESS
   printf("process @ %ld\n", scheme_get_process_milliseconds());
-#endif
-
-#ifdef MZ_USE_JIT
-  scheme_init_jit();
 #endif
 
   /* error handling and buffers */

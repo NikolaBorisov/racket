@@ -140,15 +140,37 @@ without insetting the code.}
 @defform[(RACKETBLOCK0 datum ...)]{Like @racket[RACKETBLOCK], but
 without insetting the code.}
 
-@defform[(racketinput datum ...)]{Like @racket[racketblock], but the
-@racket[datum] are typeset after a prompt representing a REPL.}
+@deftogether[(
+@defform[(racketresultblock datum ...)]
+@defform[(racketresultblock0 datum ...)]
+@defform[(RACKETRESULTBLOCK datum ...)]
+@defform[(RACKETRESULTBLOCK0 datum ...)]
+)]{
 
-@defform[(racketmod lang datum ...)]{Like @racket[racketblock], but
-the @racket[datum] are typeset inside a @racketmodfont{#lang}-form
-module whose language is @racket[lang]. The source location of
-@racket[lang] (relative to the body @racket[datum]s) determines the
-relative positioning of the @racketmodfont{#lang} line in the typeset
-output.}
+Like @racketblock[racketblock], etc., but colors the typeset text as a
+result  (i.e., a single color with no hyperlinks) instead of code.}
+
+@deftogether[(
+@defform[(racketinput datum ...)]
+@defform[(RACKETINPUT datum ...)]
+)]{Like @racket[racketblock] and @racket[RACKETBLOCK], but the
+@racket[datum]s are typeset after a prompt representing a REPL.}
+
+@defform/subs[(racketmod maybe-file lang datum ...)
+              ([maybe-file code:blank
+                           (code:line #:file filename-expr)])]{
+
+Like @racket[racketblock], but the @racket[datum] are typeset inside a
+@racketmodfont{#lang}-form module whose language is @racket[lang].
+
+The source location of @racket[lang] (relative to the body
+@racket[datum]s) determines the relative positioning of the
+@racketmodfont{#lang} line in the typeset output. So, line up
+@racket[lang] with the left end of the content code.
+
+If @racket[#:file] is provided, then the code block is typeset using
+@racket[filebox] with @racket[filename-expr] as the filename
+argument.}
 
 @defform[(racket datum ...)]{Like @racket[racketblock], but typeset on
 a single line and wrapped with its enclosing paragraph, independent of
@@ -158,7 +180,7 @@ the formatting of @racket[datum].}
 @racket[UNSYNTAX] escape like @racket[racketblock].}
 
 @defform[(racketresult datum ...)]{Like @racket[racket], but typeset
-as a REPL value (i.e., a single color with no hyperlinks).}
+as a result (i.e., a single color with no hyperlinks).}
 
 @defform[(racketid datum ...)]{Like @racket[racket], but typeset
 as an unbound identifier (i.e., no coloring or hyperlinks).}
@@ -1188,6 +1210,14 @@ An alias for @racket[centered] for backward compatibility.}
         and letters, the sequence is typeset as a superscript.}
 
  ]}
+
+@defproc[(filebox [filename (or/c string? element?)] [pre-flow pre-flow?] ...)
+         block?]{
+
+Typesets the @racket[pre-flow]s as the content of
+@racket[filename]. For example, the content may be inset on the page
+with @racket[filename] above it. If @racket[filename] is a string, it
+is passed to @racket{filepath} to obtain an @racket[element].}
 
 @; ------------------------------------------------------------------------
 @section[#:tag "index-entries"]{Index-Entry Descriptions}

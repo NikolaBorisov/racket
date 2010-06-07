@@ -111,9 +111,9 @@ by @racket[kind], which must be one of the following:
 
  @item{@indexed-racket['exec-file] --- the path of the Racket
  executable as provided by the operating system for the current
- invocation.
+ invocation. For some operating systems, the path can be relative.
 
- @margin-note{For MrEd, the executable path is the name of a MrEd
+ @margin-note{For GRacket, the executable path is the name of a GRacket
  executable.}}
 
  @item{@indexed-racket['run-file] --- the path of the current
@@ -145,7 +145,6 @@ by @racket[kind], which must be one of the following:
 @defproc[(path-list-string->path-list [str (or/c string? bytes?)]
                                       [default-path-list (listof path?)])
          (listof path?)]{
- 
 
 Parses a string or byte string containing a list of paths, and returns
 a list of path strings. Under @|AllUnix|, paths in a path list are
@@ -312,7 +311,7 @@ OS X, this size excludes the resource-fork size. On error (e.g., if no
 such file exists), the @exnraise[exn:fail:filesystem].}
 
 
-@defproc[(copy-file [src path-string?][dest path-string?]) void?]{
+@defproc[(copy-file [src path-string?] [dest path-string?]) void?]{
 
 Creates the file @racket[dest] as a copy of @racket[src]. If the file
 is not successfully copied, the @exnraise[exn:fail:filesystem]. If
@@ -321,7 +320,7 @@ preserved in the copy. Under Mac OS X, the resource fork is also
 preserved in the copy. If @racket[src] refers to a link, the target of
 the link is copied, rather than the link itself.}
 
-@defproc[(make-file-or-directory-link [to path-string?][path path-string?]) 
+@defproc[(make-file-or-directory-link [to path-string?] [path path-string?]) 
          void?]{
 
 Creates a link @racket[path] to @racket[to] under @|AllUnix|. The
@@ -587,7 +586,7 @@ bound through @racket[define-runtime-module-path].}
 Reads all characters from @racket[path] and returns them as a string.
 The @racket[mode-flag] argument is the same as for
 @racket[open-input-file].}
- 
+
 @defproc[(file->bytes [path path-string?]
                       [#:mode mode-flag (or/c 'binary 'text) 'binary])
          bytes?]{
@@ -598,16 +597,16 @@ for @racket[open-input-file].}
 
 @defproc[(file->value [path path-string?]
                       [#:mode mode-flag (or/c 'binary 'text) 'binary])
-         bytes?]{
+         any]{
 
 Reads a single S-expression from @racket[path] using @racket[read].
 The @racket[mode-flag] argument is the same as for
 @racket[open-input-file].}
 
-@defproc[(file->list [path path-string?] 
-		     [proc (input-port? . -> . any/c) read]
-		     [#:mode mode-flag (or/c 'binary 'text) 'binary])
-		     (listof any/c)]{
+@defproc[(file->list [path path-string?]
+                     [proc (input-port? . -> . any/c) read]
+                     [#:mode mode-flag (or/c 'binary 'text) 'binary])
+         (listof any/c)]{
 Repeatedly calls @racket[proc] to consume the contents of
 @racket[path], until @racket[eof] is produced. The @racket[mode-flag]
 argument is the same as for @racket[open-input-file].  }
@@ -624,8 +623,8 @@ Read all characters from @racket[path], breaking them into lines. The
 @racket[open-input-file].}
 
 @defproc[(file->bytes-lines [path path-string?]
-                      [#:mode mode-flag (or/c 'binary 'text) 'binary]
-                      [#:line-mode line-mode (or/c 'linefeed 'return 'return-linefeed 'any 'any-one) 'any])
+                            [#:mode mode-flag (or/c 'binary 'text) 'binary]
+                            [#:line-mode line-mode (or/c 'linefeed 'return 'return-linefeed 'any 'any-one) 'any])
          (listof bytes?)]{
 
 Like @racket[file->lines], but reading bytes and collecting them into
@@ -664,7 +663,7 @@ Displays each element of @racket[lst] to @racket[path], adding
 @racket[exists-flag] arguments are the same as for
 @racket[open-output-file].}
 
-@defproc[(copy-directory/files [src path-string?][dest path-string?]) 
+@defproc[(copy-directory/files [src path-string?] [dest path-string?]) 
          void?]{
 
 Copies the file or directory @racket[src] to @racket[dest], raising

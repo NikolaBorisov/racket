@@ -1,5 +1,5 @@
-#lang scheme
-(require racunit racunit/text-ui "2.ss")
+#lang racket
+(require rackunit rackunit/text-ui "2.ss")
 
 (define s0 (initialize (flat-contract integer?) =))
 (define s2 (push (push s0 2) 1))

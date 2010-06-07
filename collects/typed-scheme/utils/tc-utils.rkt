@@ -6,8 +6,8 @@ don't depend on any other portion of the system
 |#
 
 (provide (all-defined-out))
-(require "syntax-traversal.ss"
-	 "utils.ss"
+(require "syntax-traversal.rkt"
+	 "utils.rkt"
 	 syntax/parse (for-syntax scheme/base syntax/parse) scheme/match unstable/debug
          (for-syntax unstable/syntax))
 
@@ -47,7 +47,7 @@ don't depend on any other portion of the system
     (when (and (warn-unreachable?)
                (log-level? l 'warning)
                (and (syntax-transforming?) (syntax-original? (syntax-local-introduce e)))
-               #;(and (orig-module-stx) (eq? (debug syntax-source-module e) (debug syntax-source-module (orig-module-stx))))
+               #;(and (orig-module-stx) (eq? (debugf syntax-source-module e) (debugf syntax-source-module (orig-module-stx))))
 	       #;(syntax-source-module stx))
       (log-message l 'warning (format "Typed Scheme has detected unreachable code: ~e" (syntax->datum (locate-stx e)))
                    e))))

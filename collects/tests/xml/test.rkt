@@ -1,6 +1,6 @@
 #lang racket
-(require racunit
-         racunit/text-ui
+(require rackunit
+         rackunit/text-ui
          xml
          xml/plist
          mzlib/etc
@@ -324,6 +324,22 @@ END
       "<!-- comment --><br />"
       "read-xml: parse-error: expected root element - received #<comment>")
      
+     (test-read-xml/element
+      "<title><![CDATA[hello world[mp3]]]></title>"
+      '(make-element
+        (make-source (make-location 1 0 1) (make-location 1 43 44))
+        'title
+        (list)
+        (list (make-cdata (make-source (make-location 1 7 8) (make-location 1 35 36)) "<![CDATA[hello world[mp3]]]>"))))
+     
+     (test-read-xml/element
+      "<title><![CDATA[]]]></title>"
+      '(make-element
+        (make-source (make-location 1 0 1) (make-location 1 28 29))
+        'title
+        (list)
+        (list (make-cdata (make-source (make-location 1 7 8) (make-location 1 20 21)) "<![CDATA[]]]>"))))
+     
      ; XXX need more read-xml/element tests
      
      )
@@ -465,7 +481,10 @@ END
      [(define (test-xml->xexpr str xe)
         (test-equal? str (string->xexpr str) xe))
       (define (test-xexpr->string xe str)
-        (test-equal? (format "~S" xe) (xexpr->string xe) str))]
+        (test-equal? (format "~S" xe) (xexpr->string xe) str)
+        (test-string->xexpr str xe))
+      (define (test-string->xexpr str xe)
+        (test-equal? str (string->xexpr str) xe))]
      (test-suite 
       "XML and X-expression Conversions"
       
@@ -503,12 +522,20 @@ END
        ; XXX more xexpr->string tests
        )
       
+      (test-suite
+       "string->xexpr"
+       (test-string->xexpr "<?foo bar?>\n\n<html /><?foo bar?>\n"
+                           '(html ()))
+       (parameterize ([xexpr-drop-empty-attributes #t])
+         (test-string->xexpr "<?foo bar?>\n\n<html /><?foo bar?>\n"
+                             '(html))))
+      
       (local
         [(define (test-eliminate-whitespace tags choose str res)
            (test-equal? (format "~S" (list tags choose str))
                         (with-output-to-string 
-                         (lambda () 
-                           (write-xml/content ((eliminate-whitespace tags choose) (read-xml/element (open-input-string str))))))
+                            (lambda () 
+                              (write-xml/content ((eliminate-whitespace tags choose) (read-xml/element (open-input-string str))))))
                         res))
          (define (test-eliminate-whitespace/exn tags choose str msg)
            (test-exn (format "~S" (list tags choose str))
@@ -517,8 +544,8 @@ END
                             (regexp-match (regexp-quote msg) (exn-message x))))
                      (lambda ()
                        (with-output-to-string 
-                        (lambda () 
-                          (write-xml/content ((eliminate-whitespace tags choose) (read-xml/element (open-input-string str)))))))))
+                           (lambda () 
+                             (write-xml/content ((eliminate-whitespace tags choose) (read-xml/element (open-input-string str)))))))))
          (define (truer x) #t)]
         (test-suite             
          "eliminate-whitespace"
@@ -585,8 +612,8 @@ END
         (test-equal? (format "~S" (list v istr))
                      (parameterize ([param v])
                        (with-output-to-string
-                        (lambda ()
-                          (write-xml (read-xml (open-input-string istr))))))
+                           (lambda ()
+                             (write-xml (read-xml (open-input-string istr))))))
                      ostr))
       (define test-empty-tag-shorthand (mk-test-param empty-tag-shorthand))
       (define test-collapse-whitespace (mk-test-param collapse-whitespace))
@@ -699,8 +726,8 @@ END
       
       (test-equal? "write-plist"
                    (with-output-to-string
-                    (lambda ()
-                      (write-plist example (current-output-port))))
+                       (lambda ()
+                         (write-plist example (current-output-port))))
                    example-str)
       
       (local [(define (test-plist-round-trip plist)

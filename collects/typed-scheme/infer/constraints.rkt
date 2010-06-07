@@ -1,11 +1,11 @@
 #lang scheme/unit
 
-(require "../utils/utils.ss"
+(require "../utils/utils.rkt"
 	 (types convenience utils union subtype)
 	 (rep type-rep)
 	 (utils tc-utils)
 	 unstable/sequence unstable/hash
-         "signatures.ss" "constraint-structs.ss"
+         "signatures.rkt" "constraint-structs.rkt"
          scheme/match)
 
 (import restrict^ dmap^)
@@ -75,7 +75,7 @@
                           [(map2 dmap2) (in-pairs maps2)])
                          (with-handlers ([exn:infer? (lambda (_) #f)])
                            (cons 
-                            (hash-union map1 map2 (lambda (k v1 v2) (c-meet v1 v2)))
+                            (hash-union map1 map2 #:combine c-meet)
                             (dmap-meet dmap1 dmap2)))))])
       (when (null? maps)
         (fail! maps1 maps2))

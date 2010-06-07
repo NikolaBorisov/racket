@@ -36,7 +36,7 @@ please adhere to these guidelines:
   has changed and needs to be re-translated.  Do not erase the old
   version, it might help us translate the new one.  Do not move it
   either.  Just comment it out and add the short comment.  After the
-  next svn update DrRacket will automatically tell us translators that
+  next git update DrRacket will automatically tell us translators that
   a new string needs to be translated, we will find your comment in
   the file, and know what to do.
 	Some evil evil people might think that, since DrRacket automatically
@@ -133,7 +133,6 @@ please adhere to these guidelines:
  ;;; important urls
  (web-materials "Пов'язані Web-сайти") ;; menu item title
  (tool-web-sites "Web-сайти встановлених інструментів")   ;; menu item title
- (drscheme-homepage "DrRacket")
  (plt-homepage "Racket")
  (how-to-use-scheme "Як використовувати Scheme") ;; title of a book.
  (teachscheme!-homepage "TeachScheme!") ;; probably this should be a `word' in all languages
@@ -162,7 +161,7 @@ please adhere to these guidelines:
  (bug-report-submit "Відправити")
  (bug-report-submit-menu-item "Відправити звіт про помилку") ;; in Help Menu (drs & help desk)
  (error-sending-bug-report "Збій при відправці звіту про помилку")
- (error-sending-bug-report-expln "При відправці звіту про помилку відбувся збій. При наявності підключення до Internet відвідайте сайт:\n\n    http://bugs.plt-scheme.org/\n\nі відправте звіт про помилку через Web-форму на ньому. Вибачте за незручності.\n\nПовідомлення про помилку:\n~a")
+ (error-sending-bug-report-expln "При відправці звіту про помилку відбувся збій. При наявності підключення до Internet відвідайте сайт:\n\n    http://bugs.racket-lang.org/\n\nі відправте звіт про помилку через Web-форму на ньому. Вибачте за незручності.\n\nПовідомлення про помилку:\n~a")
  (illegal-bug-report "Некоректний звіт про помилку")
  (pls-fill-in-field "Будь-ласка, заповніть поле \"~a\"")
  (malformed-email-address "Некоректна адреса електронної пошти")

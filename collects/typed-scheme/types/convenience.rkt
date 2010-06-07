@@ -1,15 +1,17 @@
 #lang scheme/base  
-(require "../utils/utils.ss"
-         (rep type-rep filter-rep object-rep)
+(require "../utils/utils.rkt"
+         (rep type-rep filter-rep object-rep rep-utils)
          (utils tc-utils)
-         "abbrev.ss" (only-in scheme/contract current-blame-format)
+         "abbrev.rkt" (only-in scheme/contract current-blame-format)
 	 (types comparison printer union subtype utils)
          scheme/list scheme/match scheme/promise
          (for-syntax syntax/parse scheme/base)
+         unstable/debug syntax/id-table scheme/dict
+         scheme/trace
          (for-template scheme/base))
 
 (provide (all-defined-out)
-         (all-from-out "abbrev.ss")
+         (all-from-out "abbrev.rkt")
          ;; these should all eventually go away
          make-Name make-ValuesDots make-Function
          (rep-out filter-rep object-rep))
@@ -41,16 +43,15 @@
         [_ (exit t)]))))
 
 
-;; DO NOT USE if t contains #f
 (define (-opt t) (Un (-val #f) t))
 
 (define In-Syntax
   (-mu e
-       (*Un (-val null) -Boolean -Symbol -String -Keyword -Char -Number 
-            (make-Vector (-Syntax e))
-            (make-Box (-Syntax e))
-            (-lst (-Syntax e))
-            (-pair (-Syntax e) (-Syntax e)))))
+       (Un (-val null) -Boolean -Symbol -String -Keyword -Char -Number 
+           (make-Vector (-Syntax e))
+           (make-Box (-Syntax e))
+           (-lst (-Syntax e))
+           (-pair (-Syntax e) (-Syntax e)))))
 
 (define Any-Syntax (-Syntax In-Syntax))
 
@@ -68,3 +69,4 @@
 (define Syntax-Sexp (-Sexpof Any-Syntax))
 
 (define Ident (-Syntax -Symbol))
+

@@ -1,9 +1,9 @@
 #lang scheme/base
 (provide (all-defined-out))
-(require "../utils/utils.ss"
-         "type-env.ss" 
-	 "type-name-env.ss"
-	 "type-alias-env.ss"
+(require "../utils/utils.rkt"
+         "type-env.rkt" 
+	 "type-name-env.rkt"
+	 "type-alias-env.rkt"
          unstable/struct
          (rep type-rep object-rep filter-rep rep-utils)
 	 (for-template (rep type-rep object-rep filter-rep) 
@@ -39,8 +39,23 @@
     [(Mu-name: n b) `(make-Mu ,(sub n) ,(sub b))]
     [(Poly-names: ns b) `(make-Poly (list ,@(map sub ns)) ,(sub b))]
     [(PolyDots-names: ns b) `(make-PolyDots (list ,@(map sub ns)) ,(sub b))]
-    [(? (lambda (e) (or (LatentFilter? e)
-                        (LatentObject? e)
+    [(arr: dom rng rest drest kws)
+     `(make-arr ,(sub dom) ,(sub rng) ,(sub rest) ,(sub drest) ,(sub kws))]
+    [(TypeFilter: t p i)
+     `(make-TypeFilter ,(sub t) ,(sub p) ,(if (identifier? i)
+                                              `(quote-syntax ,i)
+                                              i))]
+    [(NotTypeFilter: t p i)
+     `(make-NotTypeFilter ,(sub t) ,(sub p) 
+                          ,(if (identifier? i)
+                               `(quote-syntax ,i)
+                               i))]
+    [(Path: p i)
+     `(make-Path ,(sub p) ,(if (identifier? i)
+                               `(quote-syntax ,i)
+                               i))]
+    [(? (lambda (e) (or (Filter? e)
+                        (Object? e)
                         (PathElem? e)))
         (app (lambda (v) (vector->list (struct->vector v))) (list-rest tag seq fv fi stx vals)))
      `(,(gen-constructor tag) ,@(map sub vals))]

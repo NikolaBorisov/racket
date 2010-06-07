@@ -1,18 +1,18 @@
 #lang scheme/unit
 
 
-(require (rename-in "../utils/utils.ss" [private private-in]))
+(require (rename-in "../utils/utils.rkt" [private private-in]))
 (require syntax/kerncase mzlib/trace
          scheme/match (prefix-in - scheme/contract)
-         "signatures.ss" "tc-envops.ss" "tc-metafunctions.ss"
-         (types utils convenience union subtype remove-intersect type-table)
+         "signatures.rkt" "tc-envops.rkt" "tc-metafunctions.rkt" "tc-subst.rkt"
+         (types utils convenience union subtype remove-intersect type-table filter-ops)
          (private-in parse-type type-annotation)
          (rep type-rep)
          (only-in (infer infer) restrict)
          (except-in (utils tc-utils stxclass-util))
          (env lexical-env)
          (only-in (env type-environments) lookup current-tvars extend-env)
-         racket/private/class-internal
+         racket/private/class-internal unstable/debug
          (except-in syntax/parse id)
          (only-in srfi/1 split-at))
 
@@ -62,8 +62,13 @@
      (match expected
        [(Vector: t)
         (make-Vector (apply Un 
-                            (for/list ([l (syntax-e #'i)])
+                            (for/list ([l (in-vector (syntax-e #'i))])
                               (tc-literal l t))))]
+       [(HeterogenousVector: ts)
+        (make-HeterogenousVector 
+         (for/list ([l (in-vector (syntax-e #'i))]
+                    [t (in-list ts)])
+           (tc-literal l t)))]
        ;; errors are handled elsewhere
        [_ (make-Vector (apply Un 
                               (for/list ([l (syntax-e #'i)])
@@ -141,8 +146,8 @@
 (define (tc-id id)
   (let* ([ty (lookup-type/lexical id)])
     (ret ty
-         (make-FilterSet (list (make-NotTypeFilter (-val #f) null id)) 
-                         (list (make-TypeFilter (-val #f) null id)))
+         (make-FilterSet (-not-filter (-val #f) id) 
+                         (-filter (-val #f) id))
          (make-Path null id))))
 
 ;; typecheck an expression, but throw away the effect
@@ -164,7 +169,19 @@
 ;;                   (Results Results -> Result)
 ;;                   (Type Results -> Type)
 ;;                   (Type Type -> Type))
-(define (check-below tr1 expected)
+(define (check-below tr1 expected)     
+  (define (filter-better? f1 f2)
+    (match* (f1 f2)
+      [(f f) #t]
+      [((FilterSet: f1+ f1-) (FilterSet: f2+ f2-))
+       (and (implied-atomic? f2+ f1+)
+            (implied-atomic? f2- f1-))]
+      [(_ _) #f]))
+  (define (object-better? o1 o2)
+    (match* (o1 o2)
+      [(o o) #t]
+      [(o (or (NoObject:) (Empty:))) #t]
+      [(_ _) #f]))  
   (match* (tr1 expected)
     ;; these two have to be first so that errors can be allowed in cases where multiple values are expected
     [((tc-result1: (? (lambda (t) (type-equal? t (Un))))) (tc-results: ts2 (NoFilter:) (NoObject:)))
@@ -180,7 +197,7 @@
      (if (= (length ts) (length ts2))
          (ret ts2 fs os)
          (ret ts2))]
-    [((tc-result1: t1 f1 o1) (tc-result1: t2 (FilterSet: (list) (list)) (Empty:)))
+    [((tc-result1: t1 f1 o1) (tc-result1: t2 (FilterSet: (Top:) (Top:)) (Empty:)))
      (cond 
        [(not (subtype t1 t2))
         (tc-error/expr "Expected ~a, but got ~a" t2 t1)])
@@ -189,7 +206,14 @@
      (cond 
        [(not (subtype t1 t2))
         (tc-error/expr "Expected ~a, but got ~a" t2 t1)]
-       [(not (and (equal? f1 f2) (equal? o1 o2)))
+       [(and (not (filter-better? f1 f2))
+             (object-better? o1 o2))
+        (tc-error/expr "Expected result with filter ~a, got filter ~a" f2 f1)]
+       [(and (filter-better? f1 f2)
+             (not (object-better? o1 o2)))
+        (tc-error/expr "Expected result with object ~a, got object ~a" o2 o1)]
+       [(and (not (filter-better? f1 f2))
+             (not (object-better? o1 o2)))
         (tc-error/expr "Expected result with filter ~a and ~a, got filter ~a and ~a" f2 (print-object o2) f1 (print-object o1))])
      expected]
     [((tc-results: t1 f o dty dbound) (tc-results: t2 f o dty dbound))
@@ -260,6 +284,7 @@
                     (add-typeof-expr form t)
                     t)]))))
 
+#;
 (define (tc-or e1 e2 or-part [expected #f])
   (match (single-value e1)
     [(tc-result1: t1 (and f1 (FilterSet: fs+ fs-)) o1)
@@ -351,14 +376,7 @@
         [(let-values (((_) meth))
            (let-values (((_ _) (#%plain-app find-method/who _ rcvr _)))
              (#%plain-app _ _ args ...)))
-         (tc/send #'rcvr #'meth #'(args ...) expected)]
-        ;; or
-        [(let-values ([(or-part) e1]) (if op1 op2 e2))
-         (and 
-          (identifier? #'op1) (identifier? #'op2)
-          (free-identifier=? #'or-part #'op1)
-          (free-identifier=? #'or-part #'op2))
-         (tc-or #'e1 #'e2 #'or-part expected)]
+         (tc/send #'rcvr #'meth #'(args ...) expected)]        
         ;; let
         [(let-values ([(name ...) expr] ...) . body)
          (tc/let-values #'((name ...) ...) #'(expr ...) #'body form expected)]
@@ -421,12 +439,6 @@
          (let-values (((_ _) (#%plain-app find-method/who _ rcvr _)))
            (#%plain-app _ _ args ...)))
        (tc/send #'rcvr #'meth #'(args ...))]
-      ;; or
-      [(let-values ([(or-part) e1]) (if op1 op2 e2))
-       (and (identifier? #'op1) (identifier? #'op2)
-            (free-identifier=? #'or-part #'op1)
-            (free-identifier=? #'or-part #'op2))
-       (tc-or #'e1 #'e2 #'or-part)]
       ;; let
       [(let-values ([(name ...) expr] ...) . body)
        (tc/let-values #'((name ...) ...) #'(expr ...) #'body form)]

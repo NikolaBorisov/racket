@@ -1,8 +1,9 @@
 #lang scheme/unit
 
-(require (rename-in "../utils/utils.ss" [infer r:infer])
-         "signatures.ss"
-         "tc-metafunctions.ss"
+(require (rename-in "../utils/utils.rkt" [infer r:infer])
+         "signatures.rkt"
+         "tc-metafunctions.rkt"
+         "tc-subst.rkt"
          mzlib/trace
          scheme/list
          syntax/private/util syntax/stx
@@ -14,30 +15,34 @@
          (types abbrev utils)
 	 (env type-environments lexical-env)
 	 (utils tc-utils)
-         mzlib/plt-match)
-(require (for-template scheme/base "internal-forms.ss"))
+         unstable/debug
+         scheme/match)
+(require (for-template scheme/base "internal-forms.rkt"))
 
 (import tc-expr^)
 (export tc-lambda^)
 
 (d-s/c lam-result ([args (listof (list/c identifier? Type/c))] 
                    [kws (listof (list/c keyword? identifier? Type/c boolean?))]
-                   [rest (or/c #f Type/c)]
-                   [drest (or/c #f (cons/c Type/c symbol?))]
+                   [rest (or/c #f (list/c identifier? Type/c))]
+                   [drest (or/c #f (cons/c identifier? (cons/c Type/c symbol?)))]
                    [body tc-results?])
        #:transparent)
 
 (define (lam-result->type lr)
   (match lr
     [(struct lam-result ((list (list arg-ids arg-tys) ...) (list (list kw kw-id kw-ty req?) ...) rest drest body))
-     (make-arr 
-      arg-tys
-      (abstract-filters (append (for/list ([i (in-naturals)] [_ arg-ids]) i) kw)
-                        (append arg-ids kw-id)
-                        body)
-      #:kws (map make-Keyword kw kw-ty req?)
-      #:rest rest
-      #:drest drest)]))
+     (let ([arg-names (append arg-ids
+                              (if rest (list (car rest)) null)
+                              (if drest (list (car drest)) null)
+                              kw-id)])
+       (make-arr 
+        arg-tys
+        (abstract-results body arg-names)
+        #:kws (map make-Keyword kw kw-ty req?)
+        #:rest (if rest (second rest) #f)
+        #:drest (if drest (cdr drest) #f)))]
+    [_ (int-err "not a lam-result")]))
 
 (define (expected-str tys-len rest-ty drest arg-len rest)
   (format "Expected function with ~a argument~a~a, but got function with ~a argument~a~a"
@@ -52,7 +57,11 @@
           (if rest " and a rest arg" "")))
 
 ;; listof[id] option[id] block listof[type] option[type] option[(cons type var)] tc-result -> lam-result
-(define (check-clause arg-list rest body arg-tys rest-ty drest ret-ty)
+(d/c (check-clause arg-list rest body arg-tys rest-ty drest ret-ty)
+     ((listof identifier?) 
+      (or/c #f identifier?) syntax? (listof Type/c) (or/c #f Type/c) (or/c #f (cons/c Type/c symbol?)) tc-results? 
+      . --> . 
+      lam-result?)
   (let* ([arg-len (length arg-list)]
          [tys-len (length arg-tys)]
          [arg-types (if (andmap type-annotation arg-list)
@@ -66,7 +75,10 @@
     (define (check-body)
       (with-lexical-env/extend 
        arg-list arg-types
-       (make-lam-result (for/list ([al arg-list] [at arg-types] [a-ty arg-tys]) (list al at)) null rest-ty drest 
+       (make-lam-result (for/list ([al arg-list] [at arg-types] [a-ty arg-tys]) (list al at)) null 
+                        (and rest-ty (list (or rest (generate-temporary)) rest-ty))
+                        ;; make up a fake name if none exists, this is an error case anyway
+                        (and drest (cons (or rest (generate-temporary)) drest))
                         (tc-exprs/check (syntax->list body) ret-ty))))
     (when (or (not (= arg-len tys-len))
               (and (or rest-ty drest) (not rest)))
@@ -141,21 +153,21 @@
                (parameterize ([dotted-env (extend-env (list #'rest)
                                                       (list (cons rest-type bound))
                                                       (dotted-env))])
-                 (make lam-result
+                 (make-lam-result
                        (map list arg-list arg-types)
                        null
                        #f
-                       (cons rest-type bound)
+                       (cons #'rest (cons rest-type bound))
                        (tc-exprs (syntax->list body)))))))]
          [else
           (let ([rest-type (get-type #'rest #:default Univ)])
             (with-lexical-env/extend 
              (cons #'rest arg-list) 
              (cons (make-Listof rest-type) arg-types)
-             (make lam-result
+             (make-lam-result
                    (map list arg-list arg-types)
                    null
-                   rest-type
+                   (list #'rest rest-type)
                    #f
                    (tc-exprs (syntax->list body)))))]))]))
 
@@ -177,6 +189,16 @@
                     [(pair? (syntax-e s))
                      (+ 1 (loop (cdr (syntax-e s))))]
                     [else 1]))]))
+  (define (formals->list s)
+    (let loop ([s s])
+      (cond
+        [(pair? s)
+         (cons (car s) (loop (cdr s)))]
+        [(null? s) s]
+        [(pair? (syntax-e s))
+         (cons (stx-car s) (loop (cdr (syntax-e s))))]
+        [(null? (syntax-e s)) null]
+        [else (list s)])))
   (define (go formals bodies formals* bodies* nums-seen)
     (cond 
       [(null? formals)
@@ -198,9 +220,10 @@
        (match expected          
          [(tc-result1: (and t (Mu: _ _))) (loop (ret (unfold t)))]
          [(tc-result1: (Function: (list (arr: argss rets rests drests '()) ...)))
-          (for/list ([args argss] [ret rets] [rest rests] [drest drests])
-            (tc/lambda-clause/check (car (syntax->list formals)) (car (syntax->list bodies))
-                                    args (values->tc-results ret (formals->list (car (syntax->list formals)))) rest drest))]
+          (let ([fmls (car (syntax->list formals))])            
+            (for/list ([args argss] [ret rets] [rest rests] [drest drests])
+              (tc/lambda-clause/check fmls (car (syntax->list bodies))
+                                      args (values->tc-results ret (formals->list fmls)) rest drest)))]
          [_ (go (syntax->list formals) (syntax->list bodies) null null null)]))]
     ;; otherwise
     [else (go (syntax->list formals) (syntax->list bodies) null null null)]))
@@ -222,6 +245,7 @@
       [(tc-result1: (or (Poly: _ _) (PolyDots: _ _)))
        (tc/plambda form formals bodies expected)]
       [(tc-result1: (Error:)) (tc/mono-lambda/type formals bodies #f)]
+      [(tc-result1: (and v (Values: _))) (maybe-loop form formals bodies (values->tc-results v #f))]
       [_ (int-err "expected not an appropriate tc-result: ~a" expected)]))
   (match expected
     [(tc-result1: (and t (Poly-names: ns expected*)))
@@ -276,7 +300,8 @@
      (unless (check-below (tc/plambda form formals bodies #f) t)
        (tc-error/expr #:return expected
                       "Expected a value of type ~a, but got a polymorphic function." t))
-     t]))
+     t]
+    [_ (int-err "not a good expected value: ~a" expected)]))
 
 ;; typecheck a sequence of case-lambda clauses, which is possibly polymorphic
 ;; tc/lambda/internal syntax syntax-list syntax-list option[type] -> tc-result

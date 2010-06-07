@@ -6,12 +6,12 @@
 ;; Limitations of this test suite:
 ;;  - It doesn't check reader-level parameterization, such as use of quotes
 ;;  - It doesn't check format of printed results
-;;  - It doesn't check the absence of MzScheme forms
+;;  - It doesn't check the absence of Racket forms
 
 ;; Don't try to run other tests from the test suite after loading this
 ;; one into a particular namespace.
 
-;; See also htdp-image.ss, which must be loaded into MrEd (but is in this
+;; See also htdp-image.ss, which must be loaded into GRacket (but is in this
 ;; directory anyway)
 
 ;; Tests that apply to all languages go in beg-adv.ss.

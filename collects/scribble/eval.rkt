@@ -215,7 +215,9 @@
                      ph
                      ((if (hash-eq? v)
                           make-hasheq-placeholder
-                          make-hash-placeholder)
+                          (if (hash-eqv? v)
+                              make-hasheqv-placeholder
+                              make-hash-placeholder))
                       a)))
                   ph)]
      [else v]))
@@ -369,10 +371,10 @@
       [(_ t racketinput* e ...)
        (titled-interaction #:eval (make-base-eval) t racketinput* e ...)]))
 
-    (define-syntax interaction
-      (syntax-rules ()
-        [(_ #:eval ev e ...) (titled-interaction #:eval ev #f racketinput* e ...)]
-        [(_ e ...) (titled-interaction #f racketinput* e ...)]))
+  (define-syntax interaction
+    (syntax-rules ()
+      [(_ #:eval ev e ...) (titled-interaction #:eval ev #f racketinput* e ...)]
+      [(_ e ...) (titled-interaction #f racketinput* e ...)]))
 
   (define-syntax racketblock+eval
     (syntax-rules ()

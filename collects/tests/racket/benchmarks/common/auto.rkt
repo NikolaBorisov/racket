@@ -37,8 +37,7 @@ exec racket -qu "$0" ${1+"$@"}
   (define (clean-up-o1 bm)
     (delete-file (format "~a.o1" bm)))
 
-  (define (mk-racket bm) (void))
-  #;
+  #;(define (mk-racket bm) (void))
   (define (mk-racket bm)
     (unless (directory-exists? "compiled")
       (make-directory "compiled"))
@@ -397,6 +396,26 @@ exec racket -qu "$0" ${1+"$@"}
                 clean-up-zo
                 (append '(nucleic2)
                         mutable-pair-progs))
+     (make-impl 'typed-scheme
+                void
+                mk-racket
+                (lambda (bm)
+                  (system (format "racket -u ~a-typed-non-optimizing.rkt" bm)))
+                extract-racket-times
+                clean-up-zo
+                (append mutable-pair-progs
+                        '(dynamic2 earley maze2 nboyer nucleic2 sboyer
+                          scheme2)))
+     (make-impl 'typed-scheme-optimizing
+                void
+                mk-racket
+                (lambda (bm)
+                  (system (format "racket -u ~a-typed-optimizing.rkt" bm)))
+                extract-racket-times
+                clean-up-zo
+                (append mutable-pair-progs
+                        '(dynamic2 earley maze2 nboyer nucleic2 sboyer
+                          scheme2)))
      (make-impl 'chicken
                 void
                 (run-mk "mk-chicken.rktl")
@@ -554,7 +573,7 @@ exec racket -qu "$0" ${1+"$@"}
 
   ;; Run benchmarks -------------------------------
 
-  (rprintf "; ~a\n" (date->string (seconds->date (current-seconds)) #t))
+  #;(rprintf "; ~a\n" (date->string (seconds->date (current-seconds)) #t))
 
   (parameterize ([current-directory bm-directory])
     (for-each (lambda (impl)

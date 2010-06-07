@@ -113,10 +113,12 @@ extern "C" Scheme_Object *scheme_initialize(Scheme_Env *env);
 #define GET_INIT_FILENAME get_init_filename
 #if REDIRECT_STDIO || WINDOW_STDIO || WCONSOLE_STDIO
 # define PRINTF mred_console_printf
+# define CMDLINE_FFLUSH(x) /* nothing */
 static void (*mred_console_printf)(char *str, ...);
 # define NEED_MRED_CONSOLE_PRINTF
 #else
 # define PRINTF printf
+# define CMDLINE_FFLUSH fflush
 #endif
 #define PROGRAM "GRacket"
 #define PROGRAM_LC "gracket"
@@ -605,7 +607,7 @@ int APIENTRY WinMain_dlls_ready(HINSTANCE hInstance, HINSTANCE hPrevInstance, LP
     a = (char *)malloc(j + l + 50);
     memcpy(a, normalized_path, j);
     memcpy(a + j, b, l);
-    memcpy(a + j + l, "MrEd-" MRED_GUID, strlen(MRED_GUID) + 6);
+    memcpy(a + j + l, "GRacket-" MRED_GUID, strlen(MRED_GUID) + 9);
     mutex = CreateMutex(NULL, FALSE, a);
     alreadyrunning = (GetLastError() == ERROR_ALREADY_EXISTS || 
 		      GetLastError() == ERROR_ACCESS_DENIED);

@@ -1,31 +1,35 @@
-#lang scheme/unit
+#lang racket/base
 
-
-(require (rename-in "../utils/utils.ss" [infer r:infer]))
-(require syntax/kerncase
-	 unstable/list unstable/syntax syntax/parse
+(require (rename-in "../utils/utils.rkt" [infer r:infer])
+         syntax/kerncase
+         unstable/list unstable/syntax syntax/parse unstable/debug
          mzlib/etc
          scheme/match
-         "signatures.ss"
-         "tc-structs.ss"
+         "signatures.rkt"
+         "tc-structs.rkt"
+         "typechecker.rkt"
          ;; to appease syntax-parse
-         "internal-forms.ss"
+         "internal-forms.rkt"
          (rep type-rep)
          (types utils convenience)
          (private parse-type type-annotation type-contract)
          (env type-env init-envs type-name-env type-alias-env lexical-env)
-	 unstable/mutated-vars
+         unstable/mutated-vars syntax/id-table
          (utils tc-utils)
-         "provide-handling.ss"
-         "def-binding.ss"
+         "provide-handling.rkt"
+         "def-binding.rkt"
+         (prefix-in c: racket/contract)
          (for-template
-          "internal-forms.ss"
+          "internal-forms.rkt"
           unstable/location
           mzlib/contract
           scheme/base))
 
-(import tc-expr^ check-subforms^)
-(export typechecker^)
+(c:provide/contract 
+ [type-check (syntax? . c:-> . syntax?)] 
+ [tc-toplevel-form (syntax? . c:-> . c:any/c)])
+
+(define unann-defs (make-free-id-table))
 
 (define (tc-toplevel/pass1 form)
   ;(printf "form-top: ~a~n" form)
@@ -115,7 +119,7 @@
          (cond
            ;; if all the variables have types, we stick them into the environment
            [(andmap (lambda (s) (syntax-property s 'type-label)) vars)        
-            (let ([ts (map get-type vars)])
+            (let ([ts (map (λ (x) (get-type x #:infer #f)) vars)])
               (for-each register-type-if-undefined vars ts)
               (map make-def-binding vars ts))]
            ;; if this already had an annotation, we just construct the binding reps
@@ -123,16 +127,13 @@
             (for-each finish-register-type vars)
             (map (lambda (s) (make-def-binding s (lookup-type s))) vars)]
            ;; special case to infer types for top level defines - should handle the multiple values case here
-           [(and (= 1 (length vars)) 
-                 (with-handlers ([exn:fail? (lambda _ #f)])
-                   (save-errors!)
-                   (begin0 (tc-expr #'expr)
-                           (restore-errors!))))
-            => (match-lambda 
-                 [(tc-result1: t)
-                  (register-type (car vars) t)
-                  (list (make-def-binding (car vars) t))]
-                 [t (int-err "~a is not a tc-result" t)])]
+           [(= 1 (length vars))
+            (match (tc-expr #'expr)
+              [(tc-result1: t)
+               (register-type (car vars) t)
+               (free-id-table-set! unann-defs (car vars) #t)
+               (list (make-def-binding (car vars) t))]
+              [t (int-err "~a is not a tc-result" t)])]
            [else
             (tc-error "Untyped definition : ~a" (map syntax-e vars))]))]
       
@@ -186,10 +187,12 @@
       
       ;; definitions just need to typecheck their bodies
       [(define-values (var ...) expr)
-       (begin (let* ([vars (syntax->list #'(var ...))]
-                     [ts (map lookup-type vars)])
-                (tc-expr/check #'expr (ret ts)))
-              (void))]
+       (let* ([vars (syntax->list #'(var ...))]
+              [ts (map lookup-type vars)])
+         (unless (for/and ([v (syntax->list #'(var ...))])
+                   (free-id-table-ref unann-defs v (lambda _ #f)))
+           (tc-expr/check #'expr (ret ts)))
+         (void))]
       
       ;; to handle the top-level, we have to recur into begins
       [(begin) (void)]

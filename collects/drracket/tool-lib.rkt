@@ -1,19 +1,19 @@
 #lang at-exp racket/base
 
 #|
-
 This first time this is loaded, it loads all of DrRacket and invokes
 the main unit, starting up DrRacket. After that, it just provides
 all of the names in the tools library, for use defining keybindings
-
 |#
+
 (require racket/class
          racket/gui/base
          (except-in scheme/unit struct)
          racket/contract
          racket/class
          
-         ;; these have to be absolute requires for `include-extracted' to work with this file.
+         ;; these have to be absolute requires for `include-extracted'
+         ;; to work with this file.
          drracket/private/link
          drracket/private/drsig
          drracket/private/language-object-contract
@@ -35,6 +35,7 @@ all of the names in the tools library, for use defining keybindings
 
 (define-values/invoke-unit/infer drracket@)
 (provide-signature-elements drracket:tool-cm^) ;; provide all of the classes & interfaces
+(provide-signature-elements drscheme:tool-cm^) ;; provide the classes & interfaces w/ drscheme: prefix
 
 (provide drracket:unit:program-editor-mixin)
 (define-syntax (drracket:unit:program-editor-mixin stx)
@@ -45,7 +46,37 @@ all of the names in the tools library, for use defining keybindings
 
 (language-object-abstraction drracket:language:object/c #t)
 
-(provide/doc
+(define-syntax (provide/dr/doc stx)
+  (let* ([munge-id
+          (λ (stx)
+            (datum->syntax
+             stx
+             (string->symbol
+              (regexp-replace #rx"^drracket:" (symbol->string (syntax-e stx)) "drscheme:"))
+             stx))]
+         [defthings
+           (syntax-case stx ()
+             [(_ case ...)
+              (map
+               (λ (case)
+                 (with-syntax ([(id ctc)
+                                (syntax-case case (proc-doc/names proc-doc)
+                                  [(proc-doc/names id ctc . stuff)
+                                   (identifier? #'id)
+                                   #'(id ctc)]
+                                  [(proc-doc id ctc . stuff)
+                                   (identifier? #'id)
+                                   #'(id ctc)]
+                                  [_
+                                   (raise-syntax-error 'provide/dr/doc "unknown thing" case)])])
+                   (with-syntax ([mid (munge-id #'id)])
+                     #'(thing-doc mid ctc ("This is provided for backwards compatibility; new code should use " (scheme id) " instead.")))))
+               (syntax->list #'(case ...)))])])
+    (syntax-case stx ()
+      [(_  rst ...)
+       #`(provide/doc #,@defthings rst ...)])))
+
+(provide/dr/doc
  
  (proc-doc/names
   drracket:module-language-tools:add-opt-out-toolbar-button
@@ -1288,7 +1319,7 @@ all of the names in the tools library, for use defining keybindings
    string? 
    . -> . (or/c false/c path?))
   (parent program-filename mode mred? title)
-  @{Calls the MrEd primitive
+  @{Calls the GRacket primitive
     @racket[put-file]
     with arguments appropriate for creating an executable
     from the file @racket[program-filename]. 

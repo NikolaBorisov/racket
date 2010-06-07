@@ -24,7 +24,7 @@ automatically directed to shut down its managed values as well.}
 
 @defproc[(custodian-shutdown-all [cust custodian?]) void?]{
 
-@margin-note{In MrEd, @|eventspaces| managed by @racket[cust] are also
+@margin-note{In GRacket, @|eventspaces| managed by @racket[cust] are also
              shut down.}
 
 Closes all @tech{file-stream ports}, @tech{TCP ports}, @tech{TCP
@@ -40,14 +40,14 @@ thread.}
 
 @defparam[current-custodian cust custodian?]{
 
-@margin-note{In MrEd, custodians also manage @|eventspaces|.}
+@margin-note{In GRacket, custodians also manage @|eventspaces|.}
 
 A parameter that determines a custodian that assumes responsibility
 for newly created threads, @tech{file-stream ports}, TCP ports,
 @tech{TCP listeners}, @tech{UDP sockets}, and @tech{byte converters}.}
 
 
-@defproc[(custodian-managed-list [cust custodian?][super custodian?]) list?]{
+@defproc[(custodian-managed-list [cust custodian?] [super custodian?]) list?]{
 
 Returns a list of immediately managed objects (not including
 @tech{custodian box}es) and subordinate custodians for @racket[cust],
@@ -108,7 +108,7 @@ must be the same as @racket[limit-cust], so that excessively large
 immediate allocations can be rejected with an
 @racket[exn:fail:out-of-memory] exception.}
 
-@defproc[(make-custodian-box [cust custodian?][v any/c]) custodian-box?]{
+@defproc[(make-custodian-box [cust custodian?] [v any/c]) custodian-box?]{
 
 Returns a @tech{custodian box} that contains @racket[v] as long as
 @racket[cust] has not been shut down.}

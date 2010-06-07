@@ -14,7 +14,7 @@
 _smart_filedir()
 {
   COMPREPLY=()
-  _filedir '@(rkt|ss|scm|scrbl)'
+  _filedir '@(rkt|rktl|ss|scm|scrbl)'
   if [[ ${#COMPREPLY[@]} -eq 0 ]]; then
     _filedir
   fi
@@ -85,7 +85,7 @@ complete  -F _racket $filenames gracket-text
 _raco_planet()
 {
     local cur="${COMP_WORDS[COMP_CWORD]}"
-    local planetcmds=$( echo '' '--help' ;  for x in `raco planet --help 2>&1 | sed -n -e 's/^  \(.[^ ]*\).*/\1/p'` ; do echo ${x} ; done )
+    local planetcmds=$( echo '' '--help' ;  for x in `raco planet --help 2>&1 | sed -n -e 's/^  raco planet \(.[^ ]*\).*/\1/p'` ; do echo ${x} ; done )
     COMPREPLY=( $(compgen -W "${planetcmds}" -- ${cur}) )
 }
 

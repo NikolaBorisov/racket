@@ -1,21 +1,22 @@
 #lang scheme/base
 
-(require "../utils/utils.ss" 
+(require "../utils/utils.rkt" 
 	 (rep type-rep)
          (private parse-type)
 	 (types convenience utils union resolve abbrev)
 	 (env type-env type-environments type-name-env)
 	 (utils tc-utils)
-         "def-binding.ss"
+         "def-binding.rkt"
          syntax/kerncase
          syntax/struct
-         mzlib/trace         
+         mzlib/trace      
+         unstable/debug
          scheme/match
          (for-syntax scheme/base))
 
 
 (require (for-template scheme/base
-                       "internal-forms.ss"))
+                       "internal-forms.rkt"))
 
 (provide tc/struct tc/poly-struct names-of-struct tc/builtin-struct d-s)
 
@@ -145,9 +146,7 @@
      (for/list ([g (in-list getters)] [t (in-list external-fld-types/no-parent)] [i (in-naturals)])
        (let ([func (if setters? 
                        (->* (list name) t)
-                       (make-Function 
-                        (list (make-arr* (list name) t 
-                                         #:object (make-LPath (list (make-StructPE name i)) 0)))))])
+		       (->acc (list name) t (list (make-StructPE name i))))])
          (cons g (wrapper func))))
      (if setters?
          (map (lambda (g t) (cons g (wrapper (->* (list name t) -Void)))) setters external-fld-types/no-parent)

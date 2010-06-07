@@ -1,6 +1,6 @@
 #lang scribble/manual
 
-@begin[(require "utils.ss" (for-label (only-meta-in 0 typed/racket)))]
+@begin[(require "utils.rkt" (for-label (only-meta-in 0 typed/racket)))]
 
 @title[#:tag "top"]{@bold{Typed Racket}: Racket with Static Types}
 

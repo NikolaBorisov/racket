@@ -27,11 +27,31 @@
            stx))
       (datum->syntax stx (cdr (syntax-e stx)) stx stx)))
 
-  (define-values (new-apply)
+  (define-values (new-apply-proc)
     (make-keyword-procedure
      (lambda (kws kw-args proc args . rest)
        (keyword-apply proc kws kw-args (apply list* args rest)))
      apply))
+
+  (define-syntaxes (new-apply)
+    ;; Convert (apply ...) without keyword args to primitive `apply',
+    ;;  so that oher optimizations are available.
+    (lambda (stx)
+      (let-values ([(here) (quote-syntax here)])
+        (if (symbol? (syntax-e stx))
+            (datum->syntax here 'new-apply-proc stx stx)
+            (let-values ([(l) (syntax->list stx)])
+              (let-values ([(app) (if (if l
+                                          (ormap (lambda (x) (keyword? (syntax-e x))) l)
+                                          #t)
+                                      'new-apply-proc
+                                      'apply)])
+                (datum->syntax
+                 stx
+                 (cons (datum->syntax here app (car l) (car l))
+                       (cdr (syntax-e stx)))
+                 stx
+                 stx)))))))
 
   (define-values (new-keyword-apply)
     (make-keyword-procedure
@@ -66,6 +86,7 @@
              (rename new-define define)
              (rename new-app #%app)
              (rename new-apply apply)
+             new-apply-proc ; for access by Typed Racket
              (rename new-prop:procedure prop:procedure)
              (rename #%app #%plain-app)
              (rename lambda #%plain-lambda)

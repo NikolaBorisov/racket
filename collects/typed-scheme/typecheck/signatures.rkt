@@ -1,14 +1,10 @@
 #lang scheme/base
 (require scheme/unit scheme/contract
-         "../utils/utils.ss"
+         "../utils/utils.rkt"
          (rep type-rep)
          (utils unit-utils)
          (types utils))
 (provide (all-defined-out))
-
-(define-signature typechecker^
-  ([cnt type-check (syntax? . -> . syntax?)] 
-   [cnt tc-toplevel-form (syntax? . -> . any)]))
 
 (define-signature tc-expr^
   ([cnt tc-expr (syntax? . -> . tc-results?)]

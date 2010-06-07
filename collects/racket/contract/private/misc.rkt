@@ -2,11 +2,11 @@
 
 (require (for-syntax racket/base
                      racket/struct-info
-                     "helpers.ss"
-                     "opt-guts.ss")
+                     "helpers.rkt"
+                     "opt-guts.rkt")
          racket/promise
-         "opt.ss"
-         "guts.ss"
+         "opt.rkt"
+         "guts.rkt"
          "rand.rkt")
 
 (provide flat-rec-contract
@@ -1256,7 +1256,7 @@
        #:first-order promise?))))
 
 #|
-   as with copy-struct in struct.ss, this first begin0
+   as with copy-struct in struct.rkt, this first begin0
    expansion "declares" that struct/c is an expression.
    It prevents further expansion until the internal definition
    context is sorted out.

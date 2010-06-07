@@ -1,14 +1,17 @@
 #lang scheme/unit
 
-(require "../utils/utils.ss"
-	 (rep free-variance type-rep filter-rep rep-utils)
-	 (types convenience union subtype remove-intersect resolve)
-	 (except-in (utils tc-utils) make-env)
-	 (env type-name-env)
-         (except-in (types utils) Dotted)
-         "constraint-structs.ss"
-	 "signatures.ss"
-         (only-in (env type-environments) lookup current-tvars)
+(require scheme/require
+         (except-in 
+          (path-up
+           "utils/utils.rkt" "utils/tc-utils.rkt"
+           "rep/free-variance.rkt" "rep/type-rep.rkt" "rep/filter-rep.rkt" "rep/rep-utils.rkt"
+           "types/convenience.rkt" "types/union.rkt" "types/subtype.rkt" "types/remove-intersect.rkt" "types/resolve.rkt"
+           "env/type-name-env.rkt")
+          make-env)
+         (except-in (path-up "types/utils.rkt") Dotted)
+         (only-in (path-up "env/type-environments.rkt") lookup current-tvars)
+         "constraint-structs.rkt"
+	 "signatures.rkt"                  
          scheme/match
          mzlib/etc
          mzlib/trace
@@ -101,11 +104,13 @@
 (define (cgen/filter V X t s)
   (match* (t s)
     [(e e) (empty-cset X)]
-    ;; FIXME - is there something to be said about LBot?
-    [((LTypeFilter: t p i) (LTypeFilter: s p i)) (cset-meet (cgen V X t s) (cgen V X s t))]
-    [((LNotTypeFilter: t p i) (LNotTypeFilter: s p i)) (cset-meet (cgen V X t s) (cgen V X s t))]
+    [(e (Top:)) (empty-cset X)]
+    ;; FIXME - is there something to be said about the logical ones?
+    [((TypeFilter: t p i) (TypeFilter: s p i)) (cset-meet (cgen V X t s) (cgen V X s t))]
+    [((NotTypeFilter: t p i) (NotTypeFilter: s p i)) (cset-meet (cgen V X t s) (cgen V X s t))]
     [(_ _) (fail! t s)]))
 
+#;
 (define (cgen/filters V X ts ss)
   (cond 
     [(null? ss) (empty-cset X)]
@@ -119,14 +124,14 @@
 (define (cgen/filter-set V X t s)
   (match* (t s)
     [(e e) (empty-cset X)]
-    [((LFilterSet: t+ t-) (LFilterSet: s+ s-))
-     (cset-meet (cgen/filters V X t+ s+) (cgen/filters V X t- s-))]
+    [((FilterSet: t+ t-) (FilterSet: s+ s-))
+     (cset-meet (cgen/filter V X t+ s+) (cgen/filter V X t- s-))]
     [(_ _) (fail! t s)]))
 
 (define (cgen/object V X t s)
   (match* (t s)
     [(e e) (empty-cset X)]
-    [(e (LEmpty:)) (empty-cset X)]
+    [(e (Empty:)) (empty-cset X)]
     ;; FIXME - do something here    
     [(_ _) (fail! t s)]))
 
@@ -506,4 +511,4 @@
 (define (i s t r)
   (infer/simple (list s) (list t) r))
 
-;(trace subst-gen cgen)
+;(trace cgen)

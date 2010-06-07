@@ -1,6 +1,6 @@
 /*
  * File:        mred.cc
- * Purpose:     MrEd main file, including a hodge-podge of global stuff
+ * Purpose:     GRacket main file, including a hodge-podge of global stuff
  * Author:      Matthew Flatt
  * Created:     1995
  * Copyright:   (c) 2004-2010 PLT Scheme Inc.
@@ -19,6 +19,7 @@
 /* wx_motif, for wxTimer: */
 #ifdef __GNUG__
 # pragma implementation "wx_timer.h"
+#pragma GCC diagnostic ignored "-Wwrite-strings"
 #endif
 
 #include "common.h"
@@ -2291,6 +2292,7 @@ static void MrEdSchemeMessages(char *msg, ...)
       waiting_sema = CreateSemaphore(NULL, 0, 1, NULL);
       SetConsoleCtrlHandler(ConsoleHandler, TRUE);      
 
+
       {
 	HMODULE hm;
 	gcw_proc gcw;
@@ -2335,10 +2337,14 @@ static void MrEdSchemeMessages(char *msg, ...)
 
     WriteConsole(console_out, s XFORM_OK_PLUS d, l, &wrote, NULL);
   } else {
+    long sz, wrt;
     char *buffer;
     DWORD wrote;
-    buffer = (char *)malloc(5 * strlen(msg));
-    vsprintf(buffer, msg, args);
+    /* FIXME: multiplying by 5 and adding 80 works for
+       all the cases where printf mode is currently used 
+       for the function, but it's completely a hack. */
+    buffer = (char *)malloc((5 * strlen(msg)) + 80);
+    wrt = vsprintf(buffer, msg, args);
     WriteConsole(console_out, buffer, strlen(buffer), &wrote, NULL);
     free(buffer);
   }
@@ -2903,7 +2909,7 @@ static void MrEdOutOfMemory(void)
 #ifdef wx_msw
   wxNoMoreCallbacks();
   MessageBox(NULL, 
-             "PLT Scheme virtual machine is out of memory. Aborting.",
+             "Racket virtual machine is out of memory. Aborting.",
              "Out of Memory",
              MB_OK);
 #endif
@@ -3642,7 +3648,7 @@ static void wxDo(Scheme_Object *proc, int argc, Scheme_Object **argv)
     return;
   }
 
-  /* wxDo might be called when MrEd is sleeping (i.e.,
+  /* wxDo might be called when GRacket is sleeping (i.e.,
      blocked on WNE in OS X). Since we're hijacking the
      thread, save an restore block information. */
   block_descriptor = thread->block_descriptor;

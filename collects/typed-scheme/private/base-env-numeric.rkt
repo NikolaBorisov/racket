@@ -1,4 +1,4 @@
-#lang s-exp "env-lang.ss"
+#lang s-exp "env-lang.rkt"
 
 (begin
   (require
@@ -7,7 +7,7 @@
    scheme/unsafe/ops
    (only-in rnrs/lists-6 fold-left)
    '#%paramz
-   "extra-procs.ss"
+   "extra-procs.rkt"
    (only-in '#%kernel [apply kernel:apply])
    scheme/promise scheme/system
    (only-in string-constants/private/only-once maybe-print-message)
@@ -19,6 +19,8 @@
   (define-for-syntax binop 
     (lambda (t [r t])
       (t t . -> . r)))
+  (define-for-syntax rounder 
+    (cl->* (-> -ExactRational -Integer) (-> -Flonum -Flonum) (-> -Real -Real)))
   
   (define-for-syntax (unop t) (-> t t))
   
@@ -41,15 +43,16 @@
 ;; numeric predicates
 [zero? (make-pred-ty (list N) B -Zero)]
 [number? (make-pred-ty N)]
-[integer? (Univ . -> . B : (-LFS (list (-filter (Un -Integer -Flonum))) (list (-not-filter -Integer))))]
+[integer? (asym-pred Univ B (-FS (-filter (Un -Integer -Flonum) 0)
+				     (-not-filter -Integer 0)))]
 [exact-integer? (make-pred-ty -Integer)]
 [real? (make-pred-ty -Real)]
 [inexact-real? (make-pred-ty -Flonum)]
 [complex? (make-pred-ty N)]
 [rational? (make-pred-ty -Real)]
-[exact? (N . -> . B : (-LFS (list) (list (-not-filter -ExactRational))))]
-[inexact? (N . -> . B : (-LFS (list) (list (-not-filter -Flonum))))]
-[fixnum? (Univ . -> . B : (-LFS (list (-filter -Integer)) null))]
+[exact? (asym-pred N B (-FS -top (-not-filter -ExactRational 0)))]
+[inexact? (asym-pred N B  (-FS -top (-not-filter -Flonum 0)))]
+[fixnum? (asym-pred Univ B (-FS (-filter -Integer 0) -top))]
 [positive? (-> -Real B)]
 [negative? (-> -Real B)]
 [exact-positive-integer? (make-pred-ty -Pos)]
@@ -98,10 +101,12 @@
              (-> -Real -Real)
              (-> N N))]
 
-[quotient (-Integer -Integer . -> . -Integer)]
-[remainder (-Integer -Integer . -> . -Integer)]
-[quotient/remainder 
- (make-Function (list (make-arr (list -Integer -Integer) (-values (list -Integer -Integer)))))]
+[quotient (cl->* (-Nat -Nat . -> . -Nat)
+                 (-Integer -Integer . -> . -Integer))]
+[remainder (cl->* (-Nat -Nat . -> . -Nat)
+                  (-Integer -Integer . -> . -Integer))]
+[quotient/remainder (cl->* (-Nat -Nat . -> . (-values (list -Nat -Nat)))
+                           (-Integer -Integer . -> . (-values (list -Integer -Integer))))]
 
 ;; exactness
 [exact->inexact (cl->* 
@@ -111,9 +116,10 @@
                  (-Real . -> . -ExactRational)
                  (N . -> . N))]
 
-[floor    (-> -Real -Real)]
-[ceiling  (-> -Real -Real)]
-[truncate (-> -Real -Real)]
+[floor rounder]
+[ceiling rounder]
+[truncate rounder]
+[round rounder]
 [make-rectangular (-Real -Real . -> . N)]
 [make-polar (-Real -Real . -> . N)]
 [real-part (N . -> . -Real)]
@@ -123,7 +129,9 @@
 [numerator   (-Real . -> . -Real)]
 [denominator (-Real . -> . -Real)]
 [rationalize (-Real -Real . -> . N)]
-[expt (cl->* (-Integer -Integer . -> . -Integer) (N N . -> . N))]
+[expt (cl->* (-Nat -Nat . -> . -Nat)
+             (-Integer -Integer . -> . -Integer)
+             (N N . -> . N))]
 [sqrt (cl->*
        (-Nat . -> . -Real)
        (N . -> . N))]
@@ -131,16 +139,14 @@
       (-Pos . -> . -Real)
       (N . -> . N))]
 [exp  (N . -> . N)]
-[cos  (N . -> . N)]
-[sin  (N . -> . N)]
-[tan  (N . -> . N)]
-[acos (N . -> . N)]
-[asin (N . -> . N)]
-[atan (cl->* (N . -> . N) (-Real -Real . -> . N))]
+[cos  (cl->* (-Flonum . -> . -Flonum) (-Real . -> . -Real) (N . -> . N))]
+[sin  (cl->* (-Flonum . -> . -Flonum) (-Real . -> . -Real) (N . -> . N))]
+[tan  (cl->* (-Flonum . -> . -Flonum) (-Real . -> . -Real) (N . -> . N))]
+[acos (cl->* (-Flonum . -> . -Flonum) (-Real . -> . -Real) (N . -> . N))]
+[asin (cl->* (-Flonum . -> . -Flonum) (-Real . -> . -Real) (N . -> . N))]
+[atan (cl->* (-Flonum . -> . -Flonum) (-Real . -> . -Real) (N . -> . N) (-Real -Real . -> . N))]
 [gcd  (null -Integer . ->* . -Integer)]
 [lcm  (null -Integer . ->* . -Integer)]
-
-[round (-Real . -> . -Real)]
 
 ;; scheme/math
 

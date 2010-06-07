@@ -184,6 +184,7 @@ typedef struct Thread_Local_Variables {
   rxpos *startp_buffer_cache_;
   rxpos *endp_buffer_cache_;
   rxpos *maybep_buffer_cache_;
+  rxpos *match_stack_buffer_cache_;
   unsigned long scheme_os_thread_stack_base_;
   int traversers_registered_;
   struct Finalizations **save_fns_ptr_;
@@ -283,6 +284,12 @@ typedef struct Thread_Local_Variables {
   struct Scheme_Bucket_Table *place_local_modpath_table_;
   struct Scheme_Hash_Table *opened_libs_;
   struct mzrt_mutex *jit_lock_;
+  struct free_list_entry *free_list_;
+  int free_list_bucket_count_;
+  struct Scheme_Bucket_Table *prefab_table_;
+  struct Scheme_Hash_Table *place_local_symbol_table_;
+  struct Scheme_Hash_Table *place_local_keyword_table_;
+  struct Scheme_Hash_Table *place_local_parallel_symbol_table_;
 /*KPLAKE1*/
 } Thread_Local_Variables;
 
@@ -343,7 +350,7 @@ START_XFORM_SKIP;
 # endif
 MZ_EXTERN Thread_Local_Variables *scheme_external_get_thread_local_variables();
 # ifdef __mzscheme_private__
-/* In the MzScheme DLL, need thread-local to be fast: */
+/* In the Racket DLL, need thread-local to be fast: */
 MZ_EXTERN unsigned long scheme_tls_delta;
 #  ifdef MZ_USE_WIN_TLS_VIA_DLL
 MZ_EXTERN int scheme_tls_index;
@@ -361,7 +368,7 @@ static __inline Thread_Local_Variables *scheme_get_thread_local_variables() {
   return *scheme_get_thread_local_variables_ptr();
 }
 # else
-/* Outside the MzScheme DLL, slower thread-local is ok: */
+/* Outside the Racket DLL, slower thread-local is ok: */
 static __inline Thread_Local_Variables *scheme_get_thread_local_variables() {
   return scheme_external_get_thread_local_variables();
 }
@@ -469,6 +476,7 @@ XFORM_GC_VARIABLE_STACK_THROUGH_THREAD_LOCAL;
 #define startp_buffer_cache XOA (scheme_get_thread_local_variables()->startp_buffer_cache_)
 #define endp_buffer_cache XOA (scheme_get_thread_local_variables()->endp_buffer_cache_)
 #define maybep_buffer_cache XOA (scheme_get_thread_local_variables()->maybep_buffer_cache_)
+#define match_stack_buffer_cache XOA (scheme_get_thread_local_variables()->match_stack_buffer_cache_)
 #define scheme_os_thread_stack_base XOA (scheme_get_thread_local_variables()->scheme_os_thread_stack_base_)
 #define traversers_registered XOA (scheme_get_thread_local_variables()->traversers_registered_)
 #define save_fns_ptr XOA (scheme_get_thread_local_variables()->save_fns_ptr_)
@@ -568,6 +576,12 @@ XFORM_GC_VARIABLE_STACK_THROUGH_THREAD_LOCAL;
 #define place_local_modpath_table XOA (scheme_get_thread_local_variables()->place_local_modpath_table_)
 #define opened_libs XOA (scheme_get_thread_local_variables()->opened_libs_)
 #define jit_lock XOA (scheme_get_thread_local_variables()->jit_lock_)
+#define free_list XOA (scheme_get_thread_local_variables()->free_list_)
+#define free_list_bucket_count XOA (scheme_get_thread_local_variables()->free_list_bucket_count_)
+#define prefab_table XOA (scheme_get_thread_local_variables()->prefab_table_)
+#define place_local_symbol_table XOA (scheme_get_thread_local_variables()->place_local_symbol_table_)
+#define place_local_keyword_table XOA (scheme_get_thread_local_variables()->place_local_keyword_table_)
+#define place_local_parallel_symbol_table XOA (scheme_get_thread_local_variables()->place_local_parallel_symbol_table_)
 /*KPLAKE2*/
 
 /* **************************************** */

@@ -1,9 +1,9 @@
 #lang scheme/unit
 
-(require "../utils/utils.ss")
+(require "../utils/utils.rkt")
 (require (rep type-rep rep-utils)
 	 (types convenience union utils)
-         "signatures.ss"
+         "signatures.rkt"
          scheme/list scheme/match)
 
 (import)
@@ -21,7 +21,7 @@
 (define (var-promote T V)
   (define (vp t) (var-promote t V))
   (define (inv t) (if (V-in? V t) Univ t))
-  (type-case (#:Type vp #:LatentFilter (sub-lf vp)) T
+  (type-case (#:Type vp #:Filter (sub-f vp)) T
              [#:F name (if (memq name V) Univ T)]
              [#:Vector t (make-Vector (inv t))]
              [#:Box t (make-Box (inv t))]
@@ -30,8 +30,8 @@
                               Univ
                               (make-Hashtable (vp k) v))]
              [#:Param in out
-                          (make-Param (var-demote in V)
-                                          (vp out))]
+                      (make-Param (var-demote in V)
+                                  (vp out))]
              [#:arr dom rng rest drest kws
                     (cond                      
                       [(apply V-in? V (get-filters rng))
@@ -54,7 +54,7 @@
 (define (var-demote T V)
   (define (vd t) (var-demote t V))
   (define (inv t) (if (V-in? V t) (Un) t))
-  (type-case (#:Type vd #:LatentFilter (sub-lf vd)) T
+  (type-case (#:Type vd #:Filter (sub-f vd)) T
              [#:F name (if (memq name V) (Un) T)]
              [#:Vector t (make-Vector (inv t))]
              [#:Box t (make-Box (inv t))]
@@ -63,8 +63,8 @@
                               (Un)
                               (make-Hashtable (vd k) v))]
              [#:Param in out
-                          (make-Param (var-promote in V)
-                                          (vd out))]
+                      (make-Param (var-promote in V)
+                                  (vd out))]
              [#:arr dom rng rest drest kws
                     (cond
                       [(apply V-in? V (get-filters rng))

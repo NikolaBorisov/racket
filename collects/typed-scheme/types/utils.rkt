@@ -1,6 +1,6 @@
 #lang scheme/base
 
-(require "../utils/utils.ss")
+(require "../utils/utils.rkt")
 
 (require (rep type-rep filter-rep object-rep rep-utils)
          (utils tc-utils)
@@ -39,7 +39,7 @@
 (define (substitute image name target #:Un [Un (get-union-maker)])
   (define (sb t) (substitute image name t))
   (if (hash-ref (free-vars* target) name #f)
-      (type-case (#:Type sb #:LatentFilter (sub-lf sb) #:LatentObject (sub-lo sb))
+      (type-case (#:Type sb #:Filter (sub-f sb) #:Object (sub-o sb))
                  target
                  [#:Union tys (Un (map sb tys))]
                  [#:F name* (if (eq? name* name) image target)]
@@ -65,7 +65,7 @@
 (define (substitute-dots images rimage name target)    
   (define (sb t) (substitute-dots images rimage name t))
   (if (hash-ref (free-vars* target) name #f)
-      (type-case (#:Type sb #:LatentFilter (sub-lf sb)) target
+      (type-case (#:Type sb #:Filter (sub-f sb)) target
                  [#:ValuesDots types dty dbound
                                (if (eq? name dbound)
                                    (make-Values
@@ -76,8 +76,8 @@
                                        (for/list ([img images])
                                          (make-Result
                                           (substitute img name expanded)
-                                          (make-LFilterSet null null)
-                                          (make-LEmpty))))))
+                                          (make-FilterSet (make-Top) (make-Top))
+                                          (make-Empty))))))
                                    (make-ValuesDots (map sb types) (sb dty) dbound))]
                  [#:arr dom rng rest drest kws
                         (if (and (pair? drest)
@@ -103,7 +103,7 @@
 (define (substitute-dotted image image-bound name target)
   (define (sb t) (substitute-dotted image image-bound name t))
   (if (hash-ref (free-vars* target) name #f)
-      (type-case (#:Type sb #:LatentFilter (sub-lf sb))
+      (type-case (#:Type sb #:Filter (sub-f sb))
                  target
                  [#:ValuesDots types dty dbound
                                (make-ValuesDots (map sb types)
@@ -210,7 +210,7 @@
 ;; convenience function for returning the result of typechecking an expression
 (define ret
   (case-lambda [(t)
-                (let ([mk (lambda (t) (make-FilterSet null null))])
+                (let ([mk (lambda (t) (make-FilterSet (make-Top) (make-Top)))])
                   (make-tc-results
                    (cond [(Type? t)
                           (list (make-tc-result t (mk t) (make-Empty)))]
@@ -310,3 +310,10 @@
 ;; a parameter for the current polymorphic structure being defined
 ;; to allow us to prevent non-regular datatypes
 (define current-poly-struct (make-parameter #f))
+
+;; a table indicating what variables should be abstracted away before using this expected type
+;; keyed on the numeric Rep sequence
+(define to-be-abstr
+  (make-weak-hash))
+
+(provide to-be-abstr)

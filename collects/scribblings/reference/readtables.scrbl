@@ -159,7 +159,7 @@ value (see @secref["special-comments"]) to cause the consumed
 character to be treated as whitespace, and it might use
 @racket[read/recursive] or @racket[read-syntax/recursive].}
 
-@defproc[(readtable-mapping [readtable readtable?][char character?])
+@defproc[(readtable-mapping [readtable readtable?] [char character?])
          (values (or/c character? 
                        (or/c 'terminating-macro
                              'non-terminating-macro))
@@ -316,7 +316,8 @@ character and the @racket[#f] readtable.}
 
 (define tuple-readtable+
   (make-readtable tuple-readtable
-                  #\* 'terminating-macro (lambda a (make-special-comment #f))
+                  #\* 'terminating-macro (lambda a 
+                                           (make-special-comment #f))
                   #\_ #\space #f))
 (parameterize ([current-readtable tuple-readtable+])
   (read (open-input-string "< * 1 __,__  2 __,__ * \"a\" * >")))

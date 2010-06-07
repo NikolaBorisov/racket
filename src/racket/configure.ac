@@ -20,11 +20,13 @@
 # it needs to include C++ flags that we don't want for Racket.
 # hence PREFLAGS, which is initialized to the original CPPFLAGS.
 
-AC_INIT([PLT Scheme])
+AC_INIT([Racket])
 AC_CONFIG_SRCDIR(racket/src/bignum.c)
 AC_CONFIG_HEADERS([racket/mzconfig.h])
 
 AC_ARG_ENABLE(gracket, [  --enable-gracket        compile GRacket as well as Racket (enabled by default)], , enable_gracket=yes )
+
+AC_ARG_ENABLE(docs,    [  --enable-docs           build docs on install (enabled by default)], , enable_docs=yes)
 
 AC_ARG_ENABLE(gl,      [  --enable-gl             use OpenGL when available (enabled by default)])
 AC_ARG_ENABLE(xrender, [  --enable-xrender        use Xrender when available (enabled by default)])
@@ -71,7 +73,7 @@ AC_ARG_ENABLE(gcov,    [  --enable-gcov           compile to gather gcov statist
 
 AC_ARG_ENABLE(noopt,   [  --enable-noopt          drop -O C flags])
 
-AC_ARG_ENABLE(noopt,   [  --enable-sdk=<path>     use Mac OS X 10.4 SDK directory])
+AC_ARG_ENABLE(enable_sdk,   [  --enable-sdk=<path>     use Mac OS X 10.4 SDK directory])
 
 AC_ARG_ENABLE(xonx,    [  --enable-xonx           compile X11 (not Quartz) GRacket for Mac OS X])
 AC_ARG_ENABLE(libfw,   [  --enable-libfw          install Mac OS X frameworks to /Library/Frameworks])
@@ -79,7 +81,7 @@ AC_ARG_ENABLE(libfw,   [  --enable-userfw         install Mac OS X frameworks to
 AC_ARG_ENABLE(macprefix, [  --enable-macprefix      allow --prefix with a Mac OS X install])
 AC_ARG_ENABLE(mac64,   [  --enable-mac64          do not force 32-bit build])
 
-AC_ARG_ENABLE(gc2_places_testing,  [  --enable-gc2-places-testing         compile gc2 places tesging support])
+AC_ARG_ENABLE(gc2_places_testing,  [  --enable-gcplacestest   compile GC places testing support])
 
 ###### Get OS Type #######
 
@@ -234,10 +236,10 @@ else
     # Set prefix explicitly so we can use it during configure
     prefix="${ac_default_prefix}"
   fi
-  libpltdir="${libdir}/plt"
-  collectsdir="${libdir}/plt/collects"
-  includepltdir="${includedir}/plt"
-  docdir="${datadir}/plt/doc"
+  libpltdir="${libdir}/racket"
+  collectsdir="${libdir}/racket/collects"
+  includepltdir="${includedir}/racket"
+  docdir="${datadir}/racket/doc"
   MAKE_COPYTREE=copytree
   COLLECTS_PATH='${collectsdir}'
   INSTALL_ORIG_TREE=no
@@ -278,6 +280,8 @@ show_explicitly_enabled()
 }
 
 show_explicitly_enabled "${enable_cgcdefault}" "CGC as default"
+
+show_explicitly_disabled "${enable_docs}" "Documentation build"
 
 show_explicitly_enabled "${enable_xonx}" "X-on-X"
 show_explicitly_enabled "${enable_shared}" "Shared libraries"
@@ -381,6 +385,8 @@ CGC=cgc
 CGC_INSTALLED=cgc
 CGC_CAP_INSTALLED=CGC
 MAIN_VARIANT=3m
+
+INSTALL_SETUP_FLAGS=
 
 STRIP_DEBUG=":"
 
@@ -560,6 +566,7 @@ case $OS in
   FreeBSD)
     LIBS="$LIBS -rdynamic"
     DYN_CFLAGS="-fPIC"
+    GC_THREADS_FLAG="-DGC_FREEBSD_THREADS"
     enable_pthread=yes
     ;;
   OpenBSD)
@@ -1355,6 +1362,13 @@ if test "${enable_libjpeg}" = "yes" ; then
   fi
 fi
 
+
+############## docs ################
+
+if test "${enable_docs}" = "no" ; then  
+  INSTALL_SETUP_FLAGS="${INSTALL_SETUP_FLAGS} -D"
+fi
+
 ############## libtool ################
 
 if test "${enable_shared}" = "yes" ; then
@@ -1540,6 +1554,8 @@ AC_SUBST(CGC)
 AC_SUBST(CGC_INSTALLED)
 AC_SUBST(CGC_CAP_INSTALLED)
 AC_SUBST(MAIN_VARIANT)
+
+AC_SUBST(INSTALL_SETUP_FLAGS)
 
 mk_needed_dir()
 {

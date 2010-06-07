@@ -2,7 +2,7 @@
 (module stepper-test mzscheme
   (require mred
            mzlib/class
-           "drracket-test-util.ss"
+           "drracket-test-util.rkt"
            tests/utils/gui
            framework
            mzlib/pretty)
@@ -369,7 +369,7 @@
     ((failure-escape)))
   
   ;; check-steps : program-spec (listof step) -> void
-  ;; executes each of the steps in DrScheme and raises
+  ;; executes each of the steps in DrRacket and raises
   ;; an exception if something doesn't match up.
   (define (check-steps program steps)
     (let* ([drs-frame (wait-for-drscheme-frame)]

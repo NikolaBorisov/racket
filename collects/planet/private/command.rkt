@@ -69,22 +69,21 @@
                           [else (help)]))))]))
 
 
-;; display-help-message : string (listof (list string string)) -> void
+;; display-help-message : string string (listof (list string string)) -> void
 ;; prints out the help message
 (define (display-help-message prog general-description commands)
   (let* ([maxlen (apply max (map (λ (p) (string-length (car p))) commands))]
          [message-lines
           `(,(format "Usage: ~a <subcommand> [option ...] <arg ...>" prog)
-            "[note: you can name a subcommand by typing any unambiguous prefix of it.]"
+            ,(format "[note: you can name a ~a subcommand by typing any unambiguous prefix of it.]" prog)
             ""
             ,@(wrap-to-count general-description 80)
             ""
-            "For help on a particular subcommand, type 'planet <subcommand> --help'"
-            "Available subcommands:"
+            ,(format "For help on a particular subcommand, type '~a <subcommand> --help'" prog)
             ,@(map (λ (command) 
                      (let* ([padded-name (pad (car command) maxlen)]
                             [desc        (cadr command)]
-                            [msg         (format "  ~a    ~a" padded-name desc)])
+                            [msg         (format "  ~a ~a    ~a" prog padded-name desc)])
                        msg))
                    commands))])
     (for-each (λ (line) (display line) (newline)) message-lines)))

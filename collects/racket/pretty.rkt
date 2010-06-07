@@ -2,10 +2,10 @@
 ;; "genwrite.scm" generic write used by pp.scm
 ;; copyright (c) 1991, marc feeley
 
-;; Pretty-printer for MzScheme
+;; Pretty-printer for Racket
 ;;  Handles structures, cycles, and graphs
 
-;; TO INSTALL this pretty-printer into a MzScheme's read-eval-print loop,
+;; TO INSTALL this pretty-printer into Racket's read-eval-print loop,
 ;; require this module and evaluate:
 ;;      (current-print pretty-print-handler)
 
@@ -152,7 +152,7 @@
      (make-parameter (lambda (line port offset width)
 		       (when (and (number? width)
 				  (not (eq? 0 line)))
-			     (newline port))
+                         (newline port))
 		       0)
 		     (lambda (x)
 		       (unless (can-accept-n? 4 x)
@@ -203,10 +203,15 @@
                           res)))))
 
    (define make-pretty-print
-     (lambda (display? as-qq?)
+     (lambda (name display? as-qq?)
        (letrec ([pretty-print
 		 (case-lambda 
-		  [(obj port)
+		  [(obj port qq-depth)
+                   (unless (output-port? port)
+                     (raise-type-error name "output port" port))
+                   (unless (or (equal? qq-depth 0)
+                               (equal? qq-depth 1))
+                     (raise-type-error name "0 or 1" qq-depth))
 		   (let ([width (pretty-print-columns)]
 			 [size-hook (pretty-print-size-hook)]
 			 [print-hook (pretty-print-print-hook)]
@@ -221,17 +226,24 @@
 							(pretty-print-print-line))
 				    (print-graph) (print-struct) (print-hash-table)
 				    (and (not display?) (print-vector-length)) (print-box) 
-                                    (and (not display?) as-qq? (print-as-expression))
+                                    (and (not display?) as-qq? (print-as-expression)) qq-depth
 				    (pretty-print-depth)
 				    (lambda (o display?)
 				      (size-hook o display? port)))
 		     (void))]
+                  [(obj port) (pretty-print obj port 0)]
 		  [(obj) (pretty-print obj (current-output-port))])])
 	 pretty-print)))
 
-   (define pretty-print (make-pretty-print #f #t))
-   (define pretty-display (make-pretty-print #t #f))
-   (define pretty-write (make-pretty-print #f #f))
+   (define pretty-print (make-pretty-print 'pretty-print #f #t))
+   (define pretty-display (let ([pp (make-pretty-print 'pretty-display #t #f)])
+                            (case-lambda
+                             [(v) (pp v)]
+                             [(v o) (pp v o)])))
+   (define pretty-write (let ([pp (make-pretty-print 'pretty-write #f #f)])
+                          (case-lambda
+                           [(v) (pp v)]
+                           [(v o) (pp v o)])))
 
    (define-struct mark (str def) #:mutable)
    (define-struct hide (val))
@@ -407,7 +419,7 @@
 
    (define (generic-write obj display? width pport
 			  print-graph? print-struct? print-hash-table? print-vec-length? 
-                          print-box? print-as-qq?
+                          print-box? print-as-qq? qq-depth
 			  depth size-hook)
 
      (define pair-open (if (print-pair-curly-braces) "{" "("))
@@ -653,7 +665,7 @@
 		       (expr-found pport ref))
 		     (n-k)))))))
 
-     (define (write-custom recur obj pport depth display? width qd)
+     (define (write-custom recur obj pport depth display? width qd multi-line?)
        (let-values ([(l c p) (port-next-location pport)])
 	 (let ([p (relocate-output-port pport l c p)])
 	   (port-count-lines! p)
@@ -668,7 +680,7 @@
 	     (port-display-handler p displayer)
 	     (port-print-handler p printer))
 	   (register-printing-port-like p pport)
-	   (parameterize ([pretty-printing #t]
+	   (parameterize ([pretty-printing multi-line?]
 			  [pretty-print-columns (or width 'infinity)])
 	     ((custom-write-accessor obj) obj p (or qd (not display?)))))))
 
@@ -844,7 +856,7 @@
                               (if (memq kind '(self never))
                                   qd
                                   (to-quoted out qd obj)))])
-                    (write-custom wr* obj pport depth display? width qd)))))]
+                    (write-custom wr* obj pport depth display? width qd #f)))))]
 	    [(struct? obj)
 	     (if (and print-struct?
 		      (not (and depth
@@ -945,7 +957,8 @@
 
        (define (pr obj extra pp-pair depth qd)
 	 ;; may have to split on multiple lines
-	 (let* ([can-multi (and width
+	 (let* ([obj (if (hide? obj) (hide-val obj) obj)]
+                [can-multi (and width
                                 (not (size-hook obj display?))
 				(or (pair? obj)
                                     (mpair? obj)
@@ -1027,7 +1040,7 @@
                                        (if (memq kind '(self never))
                                            qd
                                            (to-quoted out qd obj)))])
-                             (write-custom pp* obj pport depth display? width qd))]
+                             (write-custom pp* obj pport depth display? width qd #t))]
 			  [(struct? obj) ; print-struct is on if we got here
                            (let* ([v (struct->vector obj struct-ellipses)]
                                   [pf? (prefab?! obj v)])
@@ -1418,7 +1431,7 @@
      ;; This is where generic-write's body expressions start
 
      ((printing-port-print-line pport) #t 0 width)
-     (let ([qd (if print-as-qq? 0 #f)])
+     (let ([qd (if print-as-qq? qq-depth #f)])
        (let-values ([(l col p) (port-next-location pport)])
          (if (and width (not (eq? width 'infinity)))
              (pp* pport obj depth display? qd)

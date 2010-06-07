@@ -36,7 +36,7 @@ please adhere to these guidelines:
   has changed and needs to be re-translated.  Do not erase the old
   version, it might help us translate the new one.  Do not move it
   either.  Just comment it out and add the short comment.  After the
-  next svn update DrRacket will automatically tell us translators that
+  next git update DrRacket will automatically tell us translators that
   a new string needs to be translated, we will find your comment in
   the file, and know what to do.
 	Some evil evil people might think that, since DrRacket automatically
@@ -133,7 +133,6 @@ please adhere to these guidelines:
  ;;; important urls
  (web-materials "関連するウェブサイト") ;; menu item title
  (tool-web-sites "ツールのウェブサイト")   ;; menu item title
- (drscheme-homepage "DrRacket")
  (plt-homepage "Racket")
  (how-to-use-scheme "How to Use Scheme") ;; title of a book.
  (teachscheme!-homepage "TeachScheme!") ;; probably this should be a `word' in all languages
@@ -161,7 +160,7 @@ please adhere to these guidelines:
  (bug-report-submit "送信")
  (bug-report-submit-menu-item "バグ報告の送信") ;; in Help Menu (drs & help desk)
  (error-sending-bug-report "バグ報告の送信エラー")
- (error-sending-bug-report-expln "バグ報告の送信中にエラーが発生しました。もし、インターネット接続が正常であるなら、\n\n    http://bugs.plt-scheme.org/\n\nを開いて、オンラインのウェブフォームからバグ報告を行ってください。お手間をかけて申し訳ありません。\n\nエラーメッセージ:\n~a")
+ (error-sending-bug-report-expln "バグ報告の送信中にエラーが発生しました。もし、インターネット接続が正常であるなら、\n\n    http://bugs.racket-lang.org/\n\nを開いて、オンラインのウェブフォームからバグ報告を行ってください。お手間をかけて申し訳ありません。\n\nエラーメッセージ:\n~a")
  (illegal-bug-report "バグ報告が正しく入力されていません")
  (pls-fill-in-field "フィールド \"~a\" を入力してください。")
  (malformed-email-address "メールアドレスの形式が正しくありません。")

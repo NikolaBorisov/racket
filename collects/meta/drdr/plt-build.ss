@@ -43,7 +43,7 @@
                (path->string co-dir))]
        (notify! "Checking out ~a@~a into ~a"
                 repo rev to-dir)
-       (scm-checkout rev repo to-dir))))
+       (scm-export-repo rev repo to-dir))))
   ;; Make the build directory
   (make-directory* build-dir)
   ;; Run Configure, Make, Make Install
@@ -95,43 +95,45 @@
   (call-with-temporary-home-directory (lambda () e)))
 
 (define (with-running-program command args thunk)
-  (define-values (new-command new-args)
-    (command+args+env->command+args
-     #:env (current-env)
-     command args))
-  (define-values
-    (the-process stdout stdin stderr)
-    (apply subprocess
-           #f #;(current-error-port) 
-           #f
-           #f #;(current-error-port)
-           new-command new-args))
-  ; Die if this program does
-  (define parent
-    (current-thread))
-  (define waiter
-    (thread
-     (lambda ()
-       (subprocess-wait the-process)
-       (printf "Killing parent because wrapper is dead...~n")
-       (kill-thread parent))))
-  
-  ; Run without stdin
-  (close-output-port stdin)
-  
-  (begin0
-    ; Run the thunk
-    (thunk)
-    
-    ; Close the output ports
-    (close-input-port stdout)
-    (close-input-port stderr)
-    
-    ; Kill the guard
-    (kill-thread waiter)
-    
-    ; Kill the process
-    (subprocess-kill the-process #t)))
+  (if command
+      (local [(define-values (new-command new-args)
+                (command+args+env->command+args
+                 #:env (current-env)
+                 command args))
+              (define-values
+                (the-process stdout stdin stderr)
+                (apply subprocess
+                       #f #;(current-error-port) 
+                       #f
+                       #f #;(current-error-port)
+                       new-command new-args))
+              ; Die if this program does
+              (define parent
+                (current-thread))
+              (define waiter
+                (thread
+                 (lambda ()
+                   (subprocess-wait the-process)
+                   (printf "Killing parent because wrapper is dead...~n")
+                   (kill-thread parent))))]
+        
+        ; Run without stdin
+        (close-output-port stdin)
+        
+        (begin0
+          ; Run the thunk
+          (thunk)
+          
+          ; Close the output ports
+          (close-input-port stdout)
+          (close-input-port stderr)
+          
+          ; Kill the guard
+          (kill-thread waiter)
+          
+          ; Kill the process
+          (subprocess-kill the-process #t)))
+      (thunk)))
 
 (define-runtime-path package-list "pkgs")
 (define (planet-packages)
@@ -186,22 +188,19 @@
                                             (match pth-cmd/general
                                               [#f
                                                #f]
-                                              [(list-rest "mzscheme" rst)
+                                              [(list-rest (or 'mzscheme 'racket) rst)
                                                (lambda () (list* racket-path rst))]
-                                              [(list-rest "racket" rst)
-                                               (lambda () (list* racket-path rst))]
-                                              [(list-rest "mzc" rst)
+                                              [(list-rest 'mzc rst)
                                                (lambda () (list* mzc-path rst))]
-                                              [(list-rest "mred-text" rst)
-                                               (lambda () (list* gracket-text-path "-display" (format ":~a" (+ XSERVER-OFFSET (current-worker))) rst))]
-                                              [(list-rest "mred" rst)
-                                               (lambda () (list* gracket-path "-display" (format ":~a" (+ XSERVER-OFFSET (current-worker))) rst))]
-                                              [(list-rest "gracket-text" rst)
-                                               (lambda () (list* gracket-text-path "-display" (format ":~a" (+ XSERVER-OFFSET (current-worker))) rst))]
-                                              [(list-rest "gracket" rst)
-                                               (lambda () (list* gracket-path "-display" (format ":~a" (+ XSERVER-OFFSET (current-worker))) rst))]
+                                              [(list-rest (or 'mred 'mred-text
+                                                              'gracket 'gracket-text)
+                                                          rst)
+                                               (if (on-unix?)
+                                                   (lambda () 
+                                                     (list* gracket-text-path "-display" (format ":~a" (+ XSERVER-OFFSET (current-worker))) rst))
+                                                   #f)]
                                               [_
-                                               #f]))]       
+                                               #f]))]
                                     (if pth-cmd
                                         (submit-job!
                                          test-workers
@@ -282,6 +281,7 @@
                     [current-temporary-directory tmp-dir]
                     [current-rev rev])
        (with-env (["PLTSTDERR" "error"]
+                  ["GIT_DIR" (path->string (plt-repository))]
                   ["TMPDIR" (path->string tmp-dir)]
                   ["PATH" 
                    (format "~a:~a"
@@ -292,7 +292,8 @@
          (unless (read-cache* (revision-commit-msg rev))
            (write-cache! (revision-commit-msg rev)
                          (get-scm-commit-msg rev (plt-repository))))
-         (build-revision rev)
+         (when (build?)
+           (build-revision rev))
          (recur-many (number-of-cpus)
                      (lambda (j inner)
                        (define i (+ j XSERVER-OFFSET))

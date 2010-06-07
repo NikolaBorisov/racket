@@ -3,7 +3,7 @@
 ;; -*- scheme -*-
 
 ;; ============================================================================
-;; This file holds the specifications for creating PLT distributions.  These
+;; This file holds the specifications for creating Racket distributions.  These
 ;; specifications are defined by a sequence of <sym> := <spec>... definitions
 ;; (note: no parens), which binds the symbol to a tree specification.  In
 ;; addition, a definition can use `:=tag' which will go into a special space of
@@ -141,15 +141,15 @@ distribution-filters :=
 ;; (note: this rule means that we could avoid specifying docs and just include
 ;; the whole thing -- but this way we make sure that all doc sources are
 ;; included too (since they're specified together).)
-must-be-empty := (cond docs => (- "/plt/doc/" distribution) else => none)
+must-be-empty := (cond docs => (- "/racket/doc/" distribution) else => none)
 
 compiled-filter := (- (collects: "**/compiled/")
                       (cond verifying => "*.dep"))
-                   "/plt/bin/" "/plt/lib/"
+                   "/racket/bin/" "/racket/lib/"
 src-filter      := (src: "")
 docs-filter     := (- (doc: "")   ; all docs,
                       (notes: "") ; excluding basic stuff
-                      std-docs)   ; and things in svn
+                      std-docs)   ; and things in git
 docsrc-filter   := (+ (collects: "setup/scribble.rkt") ; only with doc sources
                       (collects: "**/scribblings/")
                       (srcfile: "*.{scrbl|scribble}")
@@ -162,7 +162,7 @@ gui-filter      := (- (+ (collects: "**/gui/") (srcfile: "gui.rkt"))
                       (srcfile: "racket/gui/dynamic.rkt"))
 tools-filter    := (+ (collects: "**/tools/") (srcfile: "tools.rkt"))
 
-;; these are in the doc directory, but are comitted in svn and should be
+;; these are in the doc directory, but are comitted in git and should be
 ;; considered like sources
 std-docs        := (doc: "doc-license.txt" "*-std/")
 
@@ -170,9 +170,10 @@ std-docs        := (doc: "doc-license.txt" "*-std/")
 ;; Junk
 
 ;; This is removed from the original tree only (*not* from the binary trees)
-junk := (+ "CVS/" "[.#]*" "*~"
+;; (the first line shouldn't be necessary, but be safe)
+junk := (+ ".git*" "/.mailmap" ".svn" "CVS/" "[.#]*" "*~"
            ;; binary stuff should come from the platform directories
-           "/plt/bin/" "/plt/lib/" "/plt/src/*build*/")
+           "/racket/bin/" "/racket/lib/" "/racket/src/*build*/")
 
 ;; These are handled in a special way by the bundle script: the binary trees
 ;; are scanned for paths that have "<pfx>{3m|cgc}<sfx>" where a "<pfx><sfx>"
@@ -200,13 +201,13 @@ junk := (+ "CVS/" "[.#]*" "*~"
 ;; covered by these templates.
 
 binary-keep/throw-templates :=
-  "/plt/{lib|include}/**/*<!>.*"
-  "/plt/bin/*<!>"
-  (cond win => "/plt/*<!>.exe"
-               "/plt/lib/**/lib*<!>???????.{dll|lib|exp}"
-        mac => "/plt/*<!>.app/"
-               "/plt/lib/*Racket*.framework/Versions/*<_!>/")
-  "/plt/collects/**/compiled/**/<!/>*.*"
+  "/racket/{lib|include}/**/*<!>.*"
+  "/racket/bin/*<!>"
+  (cond win => "/racket/*<!>.exe"
+               "/racket/lib/**/lib*<!>???????.{dll|lib|exp}"
+        mac => "/racket/*<!>.app/"
+               "/racket/lib/*Racket*.framework/Versions/*<_!>/")
+  "/racket/collects/**/compiled/**/<!/>*.*"
 
 binary-keep  := "3[mM]"
 binary-throw := "{cgc|CGC}"
@@ -215,7 +216,7 @@ binary-throw := "{cgc|CGC}"
 ;; don't follow the above (have no 3m or cgc in the name, and no keep version
 ;; of the same name that will make them disappear)
 binary-throw-more :=
-  "/plt/lib/**/libmzgc???????.{dll|lib}"
+  "/racket/lib/**/libmzgc???????.{dll|lib}"
 
 ;; ============================================================================
 ;; Convenient macros
@@ -228,7 +229,7 @@ plt-path: := (lambda (prefix . paths)
                  (when (and (pair? paths) (eq? ': (car paths)))
                    (set! suffix (cadr paths)) (set! paths (cddr paths)))
                  `(+ ,@(map (lambda (path)
-                              (concat "/plt/" prefix
+                              (concat "/racket/" prefix
                                       (regexp-replace #rx"^/" path "")
                                       suffix))
                             paths))))
@@ -281,12 +282,12 @@ srcfile: :=
 
 dll: := (lambda fs
           `(+ ,@(map (lambda (f)
-                       (concat "/plt/lib/" (regexp-replace
-                                            #rx"^/" (expand-spec-1 f) "")
+                       (concat "/racket/lib/"
+                               (regexp-replace #rx"^/" (expand-spec-1 f) "")
                                "{|3[mM]|cgc|CGC}{|???????}.dll"))
                      fs)
               ,@(map (lambda (f)
-                       (concat "/plt/lib/**/"
+                       (concat "/racket/lib/**/"
                                (regexp-replace #rx"^.*/" (expand-spec-1 f) "")
                                "{|3[mM]|cgc|CGC}{|???????}.lib"))
                      fs)))
@@ -326,17 +327,17 @@ plt := (+ dr plt-extras)
 ;; ============================================================================
 ;; Packages etc
 
-mz-base := "/plt/readme.txt"          ; generated
-           (package: "mzscheme") (notes: "racket")
-           "/plt/include/"
+mz-base := "/racket/README"
+           (package: "racket") (package: "mzscheme")
+           "/racket/include/"
            ;; configuration stuff
            (cond (not src) => (collects: "info-domain/")) ; filtered
            (package: "config")
            ;; basic code
-           (collects: "scheme" "s-exp" "reader" "racket")
+           (collects: "scheme" "s-exp" "reader")
            ;; include the time-stamp collection when not a public release
            (cond (not release)
-                 => (- (collects: "repos-time-stamp/")
+                 => (- (collects: "repo-time-stamp/")
                        (cond (not dr) => (srcfile: "time-stamp.rkt"))))
 mz-manuals := (scribblings: "main/") ; generates main pages (next line)
               (doc: "license/" "release/" "acks/" "search/"
@@ -350,7 +351,9 @@ mz-manuals := (scribblings: "main/") ; generates main pages (next line)
               (doc: "*.{html|css|js|sxref}")
               (scribblings: "{{info|icons}.rkt|*.png}" "compiled")
 
-mr-base := (package: "mred") (notes: "gracket") (bin: "mred-text") (collects: "afm/")
+mr-base := (package: "gracket") (bin: "gracket-text")
+           (package: "mred") (bin: "mred-text")
+           (collects: "afm/")
 mr-manuals := (doc+src: "gui/")
 
 dr-base := (package: "drracket") (package: "drscheme") (package: "framework")
@@ -363,28 +366,28 @@ dr-extras  :=
 plt-extras :=
 
 ;; Tests definitions
-mz-tests := (tests: "mzscheme/" "info.rkt" "utils/" "match/" "eli-tester.rkt")
+mz-tests := (tests: "racket/" "info.rkt" "utils/" "match/" "eli-tester.rkt")
 
 ;; ============================================================================
 ;; Source definitions
 
-mz-src := (+ (- (src: "README" "Makefile.in" "configure" "lt/" "mzscheme/"
+mz-src := (+ (- (src: "README" "Makefile.in" "configure" "lt/" "racket/"
                       (cond win => "worksp/{README|mzconfig.h}"
-                                   "worksp/{mzscheme|libmzsch|libmzgc|gc2}/"
+                                   "worksp/{racket|libracket|libmzgc|gc2}/"
                                    "worksp/{mzstart|starters}/"
                                    "worksp/extradlls/"))
                 (cond (not mr) => (src: "worksp/starters/mrstart.ico")))
              foreign-src)
 
-mr-src := (src: "mred/" "wxcommon/"
+mr-src := (src: "gracket/" "mred/" "wxcommon/"
                 (cond unix => "wxxt/"
                       mac  => "mac/" "a-list/" "wxmac/"
                       win  => "wxwindow/"
-                              "worksp/{jpeg|libmred|mred|mrstart}/"
+                              "worksp/{jpeg|libgracket|gracket|mrstart}/"
                               "worksp/{png|wxme|wxs|wxutils|wxwin|zlib}/"))
 
 foreign-src := (src: "foreign/{Makefile.in|README}"
-                     "foreign/{foreign.*|ssc-utils.rkt}"
+                     "foreign/{foreign.*|rktc-utils.rkt}"
                      (cond win  => "foreign/libffi_msvc"
                            else => "foreign/gcc"))
 
@@ -408,19 +411,19 @@ extra-dynlibs := (cond win => (dll: "{ssl|lib}eay32"))
 ;; This filter is used on the full compiled trees to get the binary
 ;; (platform-dependent) portion out.
 
-binaries := (+ "/plt/bin/"
-               "/plt/lib/"
-               "/plt/include/"
-               "/plt/collects/**/compiled/native/"
-               (cond unix => "/plt/bin/{mzscheme|mred}*"
-                             "/plt/bin/{|g}racket*"
-                     win  => "/plt/*.exe"
-                             "/plt/*.dll"
-                             "/plt/collects/launcher/*.exe"
-                     mac  => "/plt/bin/mzscheme*"
-                             "/plt/bin/racket*"
-                             "/plt/*.app"
-                             "/plt/collects/launcher/*.app")
+binaries := (+ "/racket/bin/"
+               "/racket/lib/"
+               "/racket/include/"
+               "/racket/collects/**/compiled/native/"
+               (cond unix => "/racket/bin/{|g}racket*"
+                             "/racket/bin/{mzscheme|mred}*"
+                     win  => "/racket/*.exe"
+                             "/racket/*.dll"
+                             "/racket/collects/launcher/*.exe"
+                     mac  => "/racket/bin/racket*"
+                             "/racket/bin/mzscheme*"
+                             "/racket/*.app"
+                             "/racket/collects/launcher/*.app")
                platform-dependent)
 
 platform-dependent := ; hook for package rules
@@ -543,7 +546,8 @@ platform-dependent :+= (and (collects: "sgl/")
 dr-extras :+= (package: "syntax-color")
 
 ;; -------------------- plt-help
-dr-extras :+= (package: "plt-help" #:collection "help")
+dr-extras :+= (collects: "help") (bin: "Racket Documentation")
+              (bin: "plt-help") (man: "plt-help")
 
 ;; -------------------- lang
 plt-extras :+= (package: "lang/" #:docs "htdp-langs/")
@@ -610,12 +614,12 @@ plt-extras :+= (collects: "texpict/")
 plt-extras :+= (package: "frtime/")
 
 ;; -------------------- typed-scheme
-dr-extras :+= (package: "typed-scheme/" ; used in drscheme
+dr-extras :+= (package: "typed-scheme/" ; used in drracket
                         #:docs "ts-{reference|guide}/")
               (- (collects: "typed/")
                  (cond (not plt) => (collects: "typed/test-engine/")
-                                    (collects: "typed/racunit/")
-                                    (srcfile: "typed/racunit.rkt")))
+                                    (collects: "typed/rackunit/")
+                                    (srcfile: "typed/rackunit.rkt")))
 
 ;; -------------------- gui-debugger
 plt-extras :+= (collects: "gui-debugger/")
@@ -658,16 +662,60 @@ plt-extras :+= (package: "deinprogramm/")
 
 ;; -------------------- unstable
 mz-extras :+= (- (package: "unstable")
-                 ;; should "gui" mean DrScheme or MrEd? It's not
-                 ;; obvious that "framework" is only in DrScheme.
+                 ;; should "gui" mean DrRacket or GRacket? It's not
+                 ;; obvious that "framework" is only in DrRacket.
                  (cond (not dr) => (collects: "unstable/gui")))
 
 ;; -------------------- plai
 plt-extras :+= (package: "plai/")
 
-plt-extras :+= (package: "racunit/")
+;; -------------------- rackunit & older schemeunit compatibility
+plt-extras :+= (package: "rackunit/")
 plt-extras :+= (package: "schemeunit/")
 
-plt-extras :+= (package: "raclog/")
+;; -------------------- racklog (aka schelog)
+plt-extras :+= (package: "racklog/")
+
+;; ============================================================================
+;; Readme header
+
+version := (lambda () (version))
+
+platform
+:= (cond i386-linux        => "Linux (i386)"
+         i386-linux-gcc2   => "Linux (i386/gcc2)"
+         i386-linux-fc2    => "Fedora Core 2 (i386)"
+         i386-linux-fc5    => "Fedora Core 5 (i386)"
+         i386-linux-fc6    => "Fedora Core 6 (i386)"
+         i386-linux-f7     => "Fedora 7 (i386)"
+         x86_64-linux-f7   => "Fedora 7 (x86_64)"
+         i386-linux-f9     => "Fedora 9 (i386)"
+         i386-linux-f12    => "Fedora 12 (i386)"
+         i386-linux-debian => "Debian Stable (i386)"
+         i386-linux-debian-testing  => "Debian Testing (i386)"
+         i386-linux-debian-unstable => "Debian Unstable (i386)"
+         i386-linux-ubuntu          => "Ubuntu (i386)"
+         i386-linux-ubuntu-dapper   => "Ubuntu Dapper (i386)"
+         i386-linux-ubuntu-edgy     => "Ubuntu Edgy (i386)"
+         i386-linux-ubuntu-feisty   => "Ubuntu Feisty (i386)"
+         i386-linux-ubuntu-hardy    => "Ubuntu Hardy (i386)"
+         i386-linux-ubuntu-intrepid => "Ubuntu Intrepid (i386)"
+         i386-linux-ubuntu-jaunty   => "Ubuntu Jaunty (i386)"
+         i386-freebsd      => "FreeBSD (i386)"
+         sparc-solaris     => "Solaris"
+         ppc-osx-mac       => "Mac OS X (PPC)"
+         i386-osx-mac      => "Mac OS X (Intel)"
+         ppc-darwin        => "Mac OS X using X11 (PPC)"
+         i386-darwin       => "Mac OS X using X11 (Intel)"
+         i386-win32        => "Windows"
+         ;; generic platforms for source distributions
+         unix => "Unix"
+         mac  => "Macintosh"
+         win  => "Windows")
+
+readme-header
+:= "This is the Racket v"(version)" "(cond src  => "source" else => "binary")
+   " package for "platform".\n"
+   (cond src => "See the build instructions in src/README.\n")
 
 ;; ============================================================================

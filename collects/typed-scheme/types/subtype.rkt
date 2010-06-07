@@ -1,5 +1,5 @@
 #lang scheme/base
-(require "../utils/utils.ss"
+(require "../utils/utils.rkt"
          (rep type-rep filter-rep object-rep rep-utils)
          (utils tc-utils)
 	 (types utils comparison resolve abbrev)
@@ -187,7 +187,7 @@
 (d/c (combine-arrs arrs)
   (c-> (listof arr?) (or/c #f arr?))
   (match arrs
-    [(list (arr: dom1 rng1 #f #f '()) (arr: dom rng #f #f '()) ...)
+    [(list (and a1 (arr: dom1 rng1 #f #f '())) (arr: dom rng #f #f '()) ...)
      (cond
        [(null? dom) (make-arr dom1 rng1 #f #f '())]
        [(not (apply = (length dom1) (map length dom))) #f]
@@ -317,6 +317,9 @@
                A0]
               [((Box: _) (BoxTop:)) A0]
               [((Vector: _) (VectorTop:)) A0]
+              [((HeterogenousVector: _) (VectorTop:)) A0]
+              [((HeterogenousVector: (list e ...)) (Vector: e*))
+               (if (andmap (lambda (e0) (type-equal? e0 e*)) e) A0 (fail! s t))]
               [((MPair: _ _) (MPairTop:)) A0]
               [((Hashtable: _ _) (HashtableTop:)) A0]
 	      ;; subtyping on structs follows the declared hierarchy
@@ -331,7 +334,7 @@
               [((Result: t f o) (Result: t* f o))
                (subtype* A0 t t*)]
               ;; we can ignore interesting results
-              [((Result: t f o) (Result: t* (LFilterSet: (list) (list)) (LEmpty:)))
+              [((Result: t f o) (Result: t* (FilterSet: (Top:) (Top:)) (Empty:)))
                (subtype* A0 t t*)]
 	      ;; subtyping on other stuff
 	      [((Syntax: t) (Syntax: t*))

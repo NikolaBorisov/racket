@@ -1,5 +1,5 @@
 /*
-  MzScheme
+  Racket
   Copyright (c) 2004-2010 PLT Scheme Inc.
   Copyright (c) 1995-2001 Matthew Flatt
 
@@ -1574,13 +1574,13 @@ static void do_wrong_syntax(const char *where,
   } else if (where == scheme_application_stx_string) {
     who = scheme_intern_symbol("#%app");
     nomwho = who;
-    mod = scheme_intern_symbol("mzscheme");
+    mod = scheme_intern_symbol("racket");
   } else if ((where == scheme_set_stx_string)
 	     || (where == scheme_var_ref_string)
 	     || (where == scheme_begin_stx_string)) {
     who = scheme_intern_symbol(where);
     nomwho = who;
-    mod = scheme_intern_symbol("mzscheme");
+    mod = scheme_intern_symbol("racket");
     if (where == scheme_begin_stx_string)
       where = "begin (possibly implicit)";
   }
@@ -2559,7 +2559,7 @@ scheme_do_exit(int argc, Scheme_Object *argv[])
 }
 
 /* scheme_immediate_exit ensures that a call to exit() goes to the C
-   library used by the MzScheme DLL, and not some other copy of the
+   library used by the Racket DLL, and not some other copy of the
    library (in Windows) */
 void scheme_immediate_exit(int status)
 {
